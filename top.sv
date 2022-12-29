@@ -16,7 +16,10 @@ module top
 	inout [15:0] sdram_dq,       //sdram data
     
     output logic [5:0] seg_sel,
-    output logic [7:0] seg_data
+    output logic [7:0] seg_data,
+
+    input logic uart_rx,
+    output logic uart_tx
 );
 
 parameter MEM_ADDR_WIDTH = 24;
@@ -96,244 +99,236 @@ segment_driver SEG
                     .dp(seg_data_invert[7])
                 );
 
-logic[31:0] timer;
+parameter CLK_SPEED = 50000000;
+parameter BAUD_RATE = 115200;
+
+logic [7:0] data_out;
+logic serial_out_rdy;
+logic serial_out_en;
+
+logic [7:0] data_in;
+logic serial_in_cplt;
+logic serial_in_error;
+
+
+serial_cntrl #(
+                .CLK_SPEED(CLK_SPEED),
+                .BAUD_RATE(BAUD_RATE)
+             )
+             SER
+             (
+                .clk(clk),
+                .rst(~rst_n),
+
+                .data_out(data_out),
+                .serial_out_en(serial_out_en),
+                .serial_out_rdy(serial_out_rdy),
+
+                .data_in(data_in),
+                .serial_in_cplt(serial_in_cplt),
+                .serial_in_error(serial_in_error),
+
+                .uart_rx(uart_rx),
+                .uart_tx(uart_tx)
+             );
+
+enum logic [2:0] {
+                    COMMAND, 
+                    WRITE_MEM, 
+                    WRITE_SERIAL_ACK, 
+                    READ_MEM_1,
+                    READ_MEM_2, 
+                    WRITE_SERIAL_DATA_1,
+                    WRITE_SERIAL_DATA_2
+                 } state;
 
 enum logic [3:0] {
-                    WRITE, 
-                    READ,
-                    MEM_WAIT,
-                    ERROR
-                 } state, next_state;
+                    FIRST_BYTE, 
+                    BYTE_ADDRESS_W_1, 
+                    BYTE_ADDRESS_W_2, 
+                    BYTE_ADDRESS_W_3,
+                    BYTE_DATA_W_1, 
+                    BYTE_DATA_W_2,
+                    BYTE_ADDRESS_R_1,
+                    BYTE_ADDRESS_R_2,
+                    BYTE_ADDRESS_R_3
+                 } cmd_state;
 
-logic [24:0] burst_size;
-logic [24:0] burst_count;
-logic [1:0] loop_count;
-logic [15:0] write_val_offset;
 
-always_ff @(posedge clk or posedge rst)
+logic [15:0] read_buff;
+
+always_ff @(posedge clk or negedge rst_n)
 begin
-    if(rst == 1'b1)
-    begin
-        mem_addr <= ($bits(mem_addr))'('b0);
-        write_val_offset <= 16'b1;
-        mem_data_in <= 16'b0;
-        mem_w_en <= 1'b1;
-        mem_r_en <= 1'b0;
-        led <= 4'b0;
-        timer <= 32'b0;
-        state <= WRITE;
-        seg_val <= ($bits(seg_val))'('b0);
-        burst_size <= ($bits(burst_size))'('h1);
-        burst_count <= ($bits(burst_count))'('b0);
-        loop_count <= 2'b0;
-    end
-    else
-    begin
+   if(rst_n == 1'b0)
+   begin
+      seg_val <= 24'hFFFF69;
+      led <= 4'b0000;
+      serial_out_en <= 1'b0;
+      mem_w_en <= 1'b0;
+      mem_r_en <= 1'b0;
+      state <= COMMAND;
+      cmd_state <= FIRST_BYTE;
+   end
+   else
+   begin
 
-/* Automatic verification */
+      if(state == COMMAND)
+      begin
+         serial_out_en <= 1'b0;
 
-        if(state == WRITE)
-        begin
+         if(serial_in_error == 1'b1)
+         begin
+            led <= 4'b0001;
+         end
+         else
+         if(serial_in_cplt == 1'b1)
+         begin
+
+            if(cmd_state == FIRST_BYTE)
+            begin
+               if(data_in == 8'b0)
+               begin
+                  // WRITE command received
+                  cmd_state <= BYTE_ADDRESS_W_1;
+               end
+               else
+               if(data_in == 8'b1)
+               begin
+                  // READ command received
+                  cmd_state <= BYTE_ADDRESS_R_1;
+               end
+               else
+               begin
+                  led <= 4'b0010;
+               end
+            end
+            // Write serial in
+            else
+            if(cmd_state == BYTE_ADDRESS_W_1)
+            begin
+               mem_addr[7:0] <= data_in;
+               cmd_state <= BYTE_ADDRESS_W_2;
+            end
+            else
+            if(cmd_state == BYTE_ADDRESS_W_2)
+            begin
+               mem_addr[15:8] <= data_in;
+               cmd_state <= BYTE_ADDRESS_W_3;
+            end
+            else
+            if(cmd_state == BYTE_ADDRESS_W_3)
+            begin
+               mem_addr[23:16] <= data_in;
+               cmd_state <= BYTE_DATA_W_1;
+               seg_val <= mem_addr;
+            end
+            else
+            if(cmd_state == BYTE_DATA_W_1)
+            begin
+               mem_data_in[7:0] <= data_in;
+               cmd_state <= BYTE_DATA_W_2;
+            end
+            else
+            if(cmd_state == BYTE_DATA_W_2)
+            begin
+               mem_data_in[15:8] <= data_in;
+               cmd_state <= FIRST_BYTE;
+               state <= WRITE_MEM;
+            end
+            // Read serial in
+            else
+            if(cmd_state == BYTE_ADDRESS_R_1)
+            begin
+               mem_addr[7:0] <= data_in;
+               cmd_state <= BYTE_ADDRESS_R_2;
+            end
+            else
+            if(cmd_state == BYTE_ADDRESS_R_2)
+            begin
+               mem_addr[15:8] <= data_in;
+               cmd_state <= BYTE_ADDRESS_R_3;
+            end
+            else
+            if(cmd_state == BYTE_ADDRESS_R_3)
+            begin
+               mem_addr[23:16] <= data_in;
+               cmd_state <= FIRST_BYTE;
+               state <= READ_MEM_1;
+               seg_val <= mem_addr;
+            end
+         end
+      end
+      // Write action
+      else
+      if(state == WRITE_MEM)
+      begin
+         if(mem_rdy == 1'b1)
+         begin
             mem_w_en <= 1'b1;
-            mem_r_en <= 1'b0;
-            mem_data_in <= mem_addr[15:0] + write_val_offset;
+            state <= WRITE_SERIAL_ACK;
+         end
+      end
+      else
+      if(state == WRITE_SERIAL_ACK)
+      begin
+         mem_w_en <= 1'b0;
 
-            if(mem_rdy == 1'b1 && mem_w_en == 1'b1)
-            begin
-                if(burst_count == burst_size - ($bits(burst_size))'('d1))
-                begin
-                    mem_addr <= mem_addr - burst_count[23:0];
-                    state <= READ;
-                    burst_count <= ($bits(burst_count))'('d0);
-                end
-                else
-                begin
-                    mem_addr <= mem_addr + ($bits(mem_addr))'('b1);
-                    burst_count <= burst_count + ($bits(burst_count))'('d1);
-                end
-            end
-
-            if(mem_cplt == 1'b1 && burst_count == ($bits(burst_count))'('d0))
-            begin
-                seg_val <= mem_addr;//{8'b0, mem_data_out};
-                
-                if(mem_addr == ($bits(mem_addr))'('h0))
-                begin
-                    // this considers the case where we roll over and increment write_val_offset
-                    if(mem_data_out != (mem_addr[15:0] - 16'd1) + (write_val_offset - ($bits(write_val_offset))'('h1)))
-                    begin
-                        led <= 4'b1001;
-                        // ERROR overides READ in case they are both true
-                        state <= ERROR;
-                    end
-                end
-                else
-                begin
-                    if(mem_data_out != (mem_addr[15:0] - 16'd1) + write_val_offset)
-                    begin
-                        led <= 4'b1001;
-                        // ERROR overides READ in case they are both true
-                        state <= ERROR;
-                    end
-                end
-            end
-
-        end
-        else
-        if(state == READ)
-        begin
-            mem_w_en <= 1'b0;
+         if(serial_out_rdy == 1'b1)
+         begin
+            data_out <= 8'd69;
+            serial_out_en <= 1'b1;
+            state <= COMMAND;
+         end
+      end
+      // Read action
+      else
+      if(state == READ_MEM_1)
+      begin
+         if(mem_rdy == 1'b1)
+         begin
             mem_r_en <= 1'b1;
+            state <= READ_MEM_2;
+         end
+      end
+      else
+      if(state == READ_MEM_2)
+      begin
+         mem_r_en <= 1'b0;
 
-            if(mem_rdy == 1'b1)
-            begin
-                mem_addr <= mem_addr + ($bits(mem_addr))'('b1);
+         if(mem_cplt == 1'b1)
+         begin
+            read_buff <= mem_data_out;
+            state <= WRITE_SERIAL_DATA_1;
+         end
+      end
+      else
+      if(state == WRITE_SERIAL_DATA_1)
+      begin
+         if(serial_out_en == 1'b1)
+         begin
+            serial_out_en <= 1'b0;
+            state <= WRITE_SERIAL_DATA_2;
+         end
+         else
+         if(serial_out_rdy == 1'b1)
+         begin
+            data_out <= read_buff[7:0];
+            serial_out_en <= 1'b1;
+         end
+      end
+      else
+      if(state == WRITE_SERIAL_DATA_2)
+      begin
+         if(serial_out_rdy == 1'b1)
+         begin
+            data_out <= read_buff[15:8];
+            serial_out_en <= 1'b1;
+            state <= COMMAND;
+         end
+      end
 
-                if(burst_count == burst_size - ($bits(burst_size))'('d1))
-                begin
-                    state <= WRITE;
-                    burst_count <= ($bits(burst_count))'('d0);
-
-                    if(mem_addr == ($bits(mem_addr))'('hFFFFFF))
-                    begin
-                        
-                        write_val_offset <= write_val_offset + 16'h1;
-
-                        if(loop_count == 2'b1)
-                        begin
-                            loop_count <= 2'b0;
-
-                            if(burst_size == ($bits(burst_size))'('h1))
-                            begin
-                                burst_size <= ($bits(burst_size))'('h1000000);
-                            end
-                            else
-                            begin
-                                burst_size <= ($bits(burst_size))'('h1);
-                            end
-                        end
-                        else
-                        begin
-                            loop_count <= loop_count + 2'b1;
-                        end
-
-                    end
-                end
-                else
-                begin
-                    burst_count <= burst_count + ($bits(burst_count))'('d1);
-                end
-
-                if(burst_count > ($bits(burst_count))'('d0))
-                begin
-                    seg_val <= mem_addr;//{8'b0, mem_data_out};
-                    if(mem_data_out != (mem_addr[15:0] - 16'd1) + write_val_offset)
-                    begin
-                        led <= 4'b0110;
-                        // ERROR overides WRITE in case they are both true
-                        state <= ERROR;
-                    end
-                end
-            end
-        end
-        else
-        if(state == ERROR)
-        begin
-            state <= ERROR;
-            mem_w_en <= 1'b0;
-            mem_r_en <= 1'b0;
-        end
-
-
-/* Manual verification */
-/*
-        mem_w_en <= 1'b0;
-        mem_r_en <= 1'b0;
-
-        if(state == WRITE)
-        begin
-            if(mem_rdy == 1'b1 && mem_w_en == 1'b0)
-            begin
-                mem_w_en <= 1'b1;
-            end
-            else
-            if(mem_w_en == 1'b1)
-            begin
-                mem_data_in <= mem_data_in + ($bits(mem_data_in))'('d2);
-                if(mem_addr == ($bits(mem_addr))'('hFFFFFF))
-                begin
-                    mem_addr <= ($bits(mem_addr))'('b0);
-                    state <= READ;
-                end
-                else
-                begin
-                    mem_addr <= mem_addr + ($bits(mem_addr))'('b1);
-                end
-            end
-        end
-        else
-        if(state == READ)
-        begin
-            if(timer == 32'd50000000)
-            begin
-                if(mem_cplt == 1'b1)
-                begin
-                    seg_val <= mem_data_out;
-                    timer <= 32'b0;
-                    led <= ~led;
-                    mem_addr <= mem_addr + ($bits(mem_addr))'('b1);
-                end
-                else
-                if(mem_rdy == 1'b1 && mem_r_en == 1'b0)
-                begin
-                    mem_r_en <= 1'b1;
-                end
-            end
-            else
-            begin
-                timer <= timer + 32'b1;
-            end
-        end
-*/
-    end
-end
-
-
-/*
-    Monitor mem_rdy and make sure we keep the memory at max utilization
-*/
-logic bad_tb;
-always_ff @(posedge clk)
-begin
-
-    if(rst == 1'b1)
-    begin
-        bad_tb <= 1'b0;
-    end
-    else
-    begin
-        if(mem_rdy == 1'b1)
-        begin
-            bad_tb <= 1'b1;
-            if(bad_tb == 1'b1)
-            begin
-                $display("Test bench failure! Double MEM_RDY detected!");
-                $stop;
-            end
-        end
-        else
-        begin
-            bad_tb <= 1'b0;
-        end
-
-        if(mem_r_en == 1'b0 && mem_w_en == 1'b0)
-        begin
-            $display("Test bench failure! Both r_en and w_en at 0!");
-            $stop;
-        end
-    end
+   end
 
 end
-
 
 endmodule
