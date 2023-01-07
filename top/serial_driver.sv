@@ -1,4 +1,4 @@
-module serial_cntrl
+module serial_driver
     #(
         parameter CLK_SPEED,
         parameter BAUD_RATE

@@ -1,4 +1,4 @@
-module mem_cntrl
+module mem_driver
         #(
 		    parameter ADDR_WIDTH,
 		    parameter DATA_WIDTH,
