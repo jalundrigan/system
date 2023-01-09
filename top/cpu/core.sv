@@ -391,6 +391,23 @@ assign load_2 = (
 always_comb
 begin
 
+    mem_addr_dec <= ($bits(mem_addr_dec))'('b0); // Can be dont care;
+    w_reg_addr_dec <= ($bits(w_reg_addr_dec))'('b0); // Can be dont care
+    op_a_dec <= ($bits(op_a_dec))'('b0); // Can be dont care
+    op_b_dec <= ($bits(op_b_dec))'('b0); // Can be dont care
+    alu_op_dec <= 4'b0000; // Can be dont care
+    mem_r_en_dec <= 1'b0;
+    mem_w_en_dec <= 1'b0;
+    reg_w_en_dec <= 1'b0;
+    reg_r_1_flag_dec <= 1'b0;
+    reg_r_2_flag_dec <= 1'b0;
+    jump_flag_dec <= 1'b0;
+    branch_on_equal_flag_dec <= 1'b0;
+    branch_on_nonequal_flag_dec <= 1'b0;
+    branch_on_less_flag_dec <= 1'b0;
+    branch_on_greater_flag_dec <= 1'b0;
+    branch_add_dec <= ($bits(branch_add_dec))'('b0); // Can be dont care;
+
     if(stage_0_buf[15:13] == 3'b000)
     begin
         // Load direct
@@ -714,7 +731,7 @@ begin
             end
         end
     end
-
+    
 end
 
 assign branch_pending = (
@@ -751,6 +768,7 @@ begin
         else
         if(mem_cplt == 1'b1 && state == INSTR && load_0 == 1'b0)
         begin
+            // this should specify bit width======================================================================================================================
             pc <= pc - 1;
         end
         else

@@ -17,7 +17,6 @@ module system_init
 
          output logic[7:0] serial_data_out,
          output logic serial_out_en,
-         output logic[23:0] seg_val,
          output logic[3:0] led,
          output logic mem_w_en,
          output logic mem_r_en,
@@ -55,7 +54,6 @@ always_ff @(posedge clk or negedge rst_n)
 begin
    if(rst_n == 1'b0)
    begin
-      seg_val <= 24'hFFFF69;
       led <= 4'b0000;
       serial_out_en <= 1'b0;
       mem_w_en <= 1'b0;
@@ -114,7 +112,6 @@ begin
             begin
                mem_addr[23:16] <= serial_data_in;
                cmd_state <= BYTE_DATA_W_1;
-               seg_val <= mem_addr;
             end
             else
             if(cmd_state == BYTE_DATA_W_1)
@@ -148,7 +145,6 @@ begin
                mem_addr[23:16] <= serial_data_in;
                cmd_state <= FIRST_BYTE;
                state <= READ_MEM_1;
-               seg_val <= mem_addr;
             end
          end
       end

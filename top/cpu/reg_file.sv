@@ -1,4 +1,4 @@
-module reg_cntrl    
+module reg_file
     #(
 		parameter ADDR_WIDTH,
 		parameter DATA_WIDTH,
@@ -26,7 +26,7 @@ logic[REG_FILE_SIZE-1:0][DATA_WIDTH-1:0] reg_file;
 assign reg_r_data_1 = reg_file[reg_r_addr_1];
 assign reg_r_data_2 = reg_file[reg_r_addr_2];
 
-always_ff @(posedge clk or posedge rst)
+always_ff @(posedge clk)
 begin
 
     if(reg_w_en == 1'b1)

@@ -1,8 +1,7 @@
 module mem_driver
         #(
 		    parameter ADDR_WIDTH,
-		    parameter DATA_WIDTH,
-		    parameter MEM_SIZE
+		    parameter DATA_WIDTH
 	    )
         (
             input logic clk,

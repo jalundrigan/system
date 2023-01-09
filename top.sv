@@ -22,87 +22,36 @@ module top
    output logic uart_tx
 );
 
-logic rst;
-
-assign rst = ~rst_n;
-
-/*
-   DRAM Memory driver
-*/
 parameter MEM_ADDR_WIDTH = 24;
 parameter DATA_WIDTH = 16;
-parameter MEM_SIZE = 65536;
+parameter REG_ADDR_WIDTH = 4;
+parameter REG_FILE_SIZE = 16;
 
+logic rst;
+assign rst = ~rst_n;
+
+// Input to memory controller
 logic[MEM_ADDR_WIDTH-1:0] mem_addr;
 logic[DATA_WIDTH-1:0] mem_data_in;
 logic mem_r_en;
 logic mem_w_en;
 
-logic[DATA_WIDTH-1:0] mem_data_out;
+// Output from memory controller
 logic mem_rdy;
 logic mem_cplt;
+logic[DATA_WIDTH-1:0] mem_data_out;
 
-assign sdram_clk = clk;
+// MUXed memory controller input from CPU
+logic[MEM_ADDR_WIDTH-1:0] cpu_mem_addr;
+logic[DATA_WIDTH-1:0] cpu_mem_data_in;
+logic cpu_mem_r_en;
+logic cpu_mem_w_en;
 
-mem_driver  #(
-                .ADDR_WIDTH(MEM_ADDR_WIDTH),
-                .DATA_WIDTH(DATA_WIDTH),
-                .MEM_SIZE(MEM_SIZE)
-            )
-            MEM
-            (
-                .clk(clk),
-                .rst(rst),
-
-                .mem_addr(mem_addr),
-                .mem_data_in(mem_data_in),
-                .mem_r_en(mem_r_en),
-                .mem_w_en(mem_w_en),
-
-                .mem_data_out(mem_data_out),
-                .mem_rdy(mem_rdy),
-                .mem_cplt(mem_cplt),
-
-                .cke(sdram_cke),
-                .cs_n(sdram_cs_n),
-                .ras_n(sdram_ras_n),
-                .cas_n(sdram_cas_n),
-                .we_n(sdram_we_n),
-                .ldqm(sdram_dqm[0]),
-                .udqm(sdram_dqm[1]),
-                .bs(sdram_ba),
-                .a(sdram_addr),
-                .dq(sdram_dq)
-            );
-
-/*
-   Seven segment driver
-*/
-logic[23:0] seg_val;
-
-logic[7:0] seg_data_invert;
-logic[5:0] seg_sel_invert;
-
-assign seg_data = ~seg_data_invert;
-assign seg_sel = ~seg_sel_invert;
-
-segment_driver SEG
-                (
-                    .clk(clk),
-                    .rst(rst),
-
-                    .val(seg_val),
-
-                    .sel(seg_sel_invert),
-                    .seg_a(seg_data_invert[0]),
-                    .seg_b(seg_data_invert[1]),
-                    .seg_c(seg_data_invert[2]),
-                    .seg_d(seg_data_invert[3]),
-                    .seg_e(seg_data_invert[4]),
-                    .seg_f(seg_data_invert[5]),
-                    .seg_g(seg_data_invert[6]),
-                    .dp(seg_data_invert[7])
-                );
+// MUXed memory controller input from INIT
+logic[MEM_ADDR_WIDTH-1:0] init_mem_addr;
+logic[DATA_WIDTH-1:0] init_mem_data_in;
+logic init_mem_r_en;
+logic init_mem_w_en;
 
 
 /*
@@ -140,7 +89,9 @@ serial_driver #(
                   .uart_tx(uart_tx)
                );
 
-
+/*
+   System Initialization
+*/
 system_init #(
                .ADDR_WIDTH(MEM_ADDR_WIDTH),
                .DATA_WIDTH(DATA_WIDTH)
@@ -160,18 +111,79 @@ system_init #(
 
                .serial_data_out(serial_data_out),
                .serial_out_en(serial_out_en),
-               .seg_val(seg_val),
                .led(led),
-               .mem_w_en(mem_w_en),
-               .mem_r_en(mem_r_en),
-               .mem_addr(mem_addr),
-               .mem_data_in(mem_data_in)
+               .mem_w_en(init_mem_w_en),
+               .mem_r_en(init_mem_r_en),
+               .mem_addr(init_mem_addr),
+               .mem_data_in(init_mem_data_in)
             );
 
 
 /*
    CPU
 */
+cpu  #(
+         .MEM_ADDR_WIDTH(MEM_ADDR_WIDTH),
+         .REG_ADDR_WIDTH(REG_ADDR_WIDTH),
+         .DATA_WIDTH(DATA_WIDTH),
+         .REG_FILE_SIZE(REG_FILE_SIZE)
+      )
+      CPU
+      (
+         .clk(clk),
+         .rst(rst),
 
+         .mem_addr(cpu_mem_addr),
+         .mem_data_in(cpu_mem_data_in),
+         .mem_r_en(cpu_mem_r_en),
+         .mem_w_en(cpu_mem_w_en),
+
+         .mem_data_out(mem_data_out),
+         .mem_rdy(mem_rdy),
+         .mem_cplt(mem_cplt)
+      );
+
+
+assign mem_addr = init_mem_addr;
+assign mem_data_in = init_mem_data_in;
+assign mem_r_en = init_mem_r_en;
+assign mem_w_en = init_mem_w_en;
+
+/*
+   Memory Controller
+*/
+mem_cntrl  #(
+                .ADDR_WIDTH(MEM_ADDR_WIDTH),
+                .DATA_WIDTH(DATA_WIDTH)
+            )
+            MEM_CTRL
+            (
+                .clk(clk),
+                .rst(rst),
+
+                .mem_addr(mem_addr),
+                .mem_data_in(mem_data_in),
+                .mem_r_en(mem_r_en),
+                .mem_w_en(mem_w_en),
+
+                .mem_rdy(mem_rdy),
+                .mem_cplt(mem_cplt),
+                .mem_data_out(mem_data_out),
+
+                .cke(sdram_cke),
+                .cs_n(sdram_cs_n),
+                .ras_n(sdram_ras_n),
+                .cas_n(sdram_cas_n),
+                .we_n(sdram_we_n),
+                .ldqm(sdram_dqm[0]),
+                .udqm(sdram_dqm[1]),
+                .bs(sdram_ba),
+                .a(sdram_addr),
+                .sdram_clk(sdram_clk),
+                .dq(sdram_dq),
+
+                .seg_sel(seg_sel),
+                .seg_data(seg_data)
+            );
 
 endmodule

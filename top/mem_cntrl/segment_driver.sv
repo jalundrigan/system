@@ -47,7 +47,6 @@ begin
             sel[5:1] <= sel[4:0];
             sel[0] <= sel[5];
         end
-
     end
 
 end

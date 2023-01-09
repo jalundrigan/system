@@ -27,7 +27,16 @@ def random_test():
 
         for i in range(list_size):
             # write random address and value
-            address = random.randrange(2**24)
+            while True:
+                address = 0
+                if i != 2:
+                    address = random.randrange(2**24)
+                    if address == 0:
+                        address = 1
+                if len(write_list) == 0 or ( address not in write_list[:][0] ):
+                    break
+                else:
+                    print('REPEAT')
             value = random.randrange(65536)
             write_list.append([address, value])
             write_memory(address, value)
@@ -38,6 +47,9 @@ def random_test():
             if read_val_int != write_list[i][1]:
                 print('RAND Error')
                 print(read_val_int)
+                print(write_list[i][1])
+                print(i)
+                print(write_list)
                 while True:
                     pass
 
@@ -115,7 +127,7 @@ ser.parity = serial.PARITY_EVEN
 random.seed()
 
 #scan_test()
-#manual_test()
-random_test()
+manual_test()
+#random_test()
 
 ser.close()

@@ -27,6 +27,9 @@ assign greater = flag_reg[2];
 
 always_comb
 begin
+
+	result <= ($bits(result))'('b0); // Can be dont care;
+
 	if(opcode == 4'b0000)
 	begin
 		result <= op_a + op_b;
@@ -78,6 +81,9 @@ begin
 	end
 	else
 	begin
+
+		flag_reg <= 8'b0; // Can be dont care;
+
 		if(alu_active == 1'b1)
 		begin
 			if(opcode == 4'b1000)
