@@ -1,0 +1,43 @@
+LLI $3, 0x02
+LUI $3, 0x00
+LLI $12, 0xFF
+LUI $12, 0xFF
+MUL $3, $4
+CPP $3, $4
+BLT 5
+LLI $3, 0x25
+LUI $3, 0xDE
+SUBI $3, 250
+SUBI $15, 12
+LLI $4, 0x25
+LUI $4, 0xDE
+SUB $4, $14
+J 4
+LLI $2, 0xDE
+MOV $7, $6
+LUI $3, 0xFF
+LLI $4, 0x27
+LUI $7, 0x39
+ADDI $7, 30
+STD 511, $15
+MOV $3, $2
+LDD $13, 279
+ADD $4, $5
+ADDI $4, 0x1FF
+SUBI $4, 358
+AND $7, $12
+OR $11, $0
+XOR $15, $2
+CMP1 $5
+CMP2 $10
+LDN $11, $13
+MOV $14, $7
+STI $14, $7
+CPP $7, $8
+BGT -5
+STD 511, $15
+LDD $13, 279
+ADD $4, $5
+AND $7, $12
+OR $11, $0
+XOR $15, $2

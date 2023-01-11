@@ -89,9 +89,12 @@ serial_driver #(
                   .uart_tx(uart_tx)
                );
 
+
 /*
    System Initialization
 */
+logic cpu_enable;
+
 system_init #(
                .ADDR_WIDTH(MEM_ADDR_WIDTH),
                .DATA_WIDTH(DATA_WIDTH)
@@ -115,7 +118,9 @@ system_init #(
                .mem_w_en(init_mem_w_en),
                .mem_r_en(init_mem_r_en),
                .mem_addr(init_mem_addr),
-               .mem_data_in(init_mem_data_in)
+               .mem_data_in(init_mem_data_in),
+
+               .cpu_enable(cpu_enable)
             );
 
 
@@ -131,7 +136,7 @@ cpu  #(
       CPU
       (
          .clk(clk),
-         .rst(rst),
+         .rst(rst | ~cpu_enable),
 
          .mem_addr(cpu_mem_addr),
          .mem_data_in(cpu_mem_data_in),
@@ -144,10 +149,10 @@ cpu  #(
       );
 
 
-assign mem_addr = init_mem_addr;
-assign mem_data_in = init_mem_data_in;
-assign mem_r_en = init_mem_r_en;
-assign mem_w_en = init_mem_w_en;
+assign mem_addr = cpu_enable == 1'b0 ? init_mem_addr : cpu_mem_addr;
+assign mem_data_in = cpu_enable == 1'b0 ? init_mem_data_in : cpu_mem_data_in;
+assign mem_r_en = cpu_enable == 1'b0 ? init_mem_r_en : cpu_mem_r_en;
+assign mem_w_en = cpu_enable == 1'b0 ? init_mem_w_en : cpu_mem_w_en;
 
 /*
    Memory Controller

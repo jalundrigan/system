@@ -21,7 +21,9 @@ module system_init
          output logic mem_w_en,
          output logic mem_r_en,
          output logic[ADDR_WIDTH-1:0] mem_addr,
-         output logic[DATA_WIDTH-1:0] mem_data_in
+         output logic[DATA_WIDTH-1:0] mem_data_in,
+
+         output logic cpu_enable
       );
 
 
@@ -32,7 +34,8 @@ enum logic [2:0] {
                     READ_MEM_1,
                     READ_MEM_2, 
                     WRITE_SERIAL_DATA_1,
-                    WRITE_SERIAL_DATA_2
+                    WRITE_SERIAL_DATA_2,
+                    COMPLETE_INIT
                  } state;
 
 enum logic [3:0] {
@@ -60,6 +63,7 @@ begin
       mem_r_en <= 1'b0;
       state <= COMMAND;
       cmd_state <= FIRST_BYTE;
+      cpu_enable <= 1'b0;
    end
    else
    begin
@@ -78,16 +82,21 @@ begin
 
             if(cmd_state == FIRST_BYTE)
             begin
-               if(serial_data_in == 8'b0)
+               if(serial_data_in == 8'd0)
                begin
                   // WRITE command received
                   cmd_state <= BYTE_ADDRESS_W_1;
                end
                else
-               if(serial_data_in == 8'b1)
+               if(serial_data_in == 8'd1)
                begin
                   // READ command received
                   cmd_state <= BYTE_ADDRESS_R_1;
+               end
+               else
+               if(serial_data_in == 8'd2)
+               begin
+                  state <= COMPLETE_INIT;
                end
                else
                begin
@@ -215,6 +224,11 @@ begin
             serial_out_en <= 1'b1;
             state <= COMMAND;
          end
+      end
+      else
+      if(state == COMPLETE_INIT)
+      begin
+         cpu_enable <= 1'b1;
       end
 
    end

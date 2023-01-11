@@ -9,6 +9,14 @@ def write_memory(address, value):
     ser.flush()
     return ser.read(1)
 
+def write_memory_in_bytes(address, low, high):
+    ser.write(WRITE_CMD.to_bytes(1, 'little'))
+    ser.write(address.to_bytes(3, 'little'))
+    ser.write(low.to_bytes(1, 'little'))
+    ser.write(high.to_bytes(1, 'little'))
+    ser.flush()
+    return ser.read(1)
+
 def read_memory(address):
     ser.write(READ_CMD.to_bytes(1, 'little'))
     ser.write(address.to_bytes(3, 'little'))
@@ -112,6 +120,34 @@ def scan_test():
     input()
 
     print('SCAN TEST SUCCESS!')
+
+
+def send_program():
+
+    print('Enter file name')
+    file_name = input()
+    mem_address = 0
+    write_vals = []
+
+    with open(file_name, mode='rb') as file:
+        file_data = list(file.read())
+
+        print('File opened successfully with size: ', len(file_data), ' bytes')
+        
+        byte_index = 0
+        while byte_index < len(file_data):
+            low_byte = file_data[byte_index]
+            high_byte = file_data[byte_index + 5]
+            print(hex(low_byte), ',', end='')
+            print(hex(high_byte))
+            write_memory_in_bytes(mem_address, low_byte, high_byte)
+            write_vals.append(write_vals)
+
+            mem_address += 1
+            byte_index += 10
+
+    for i in range(mem_address):
+
 
 
 
