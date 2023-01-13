@@ -234,7 +234,7 @@ begin
 
 	$display("==========\nStart of file read and mem init\n==========\n");
 
-	read_file = $fopen("program.jasm", "r");
+	read_file = $fopen("tester.jasm", "r");
 	write_file = $fopen("out", "wb");
 
 	if(read_file == 0)

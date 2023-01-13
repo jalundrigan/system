@@ -1,0 +1,19 @@
+//LLI $0, 0x01
+//LUI $0, 0x23
+//STD 0x100, $0
+//J -3
+LLI $0, 0
+LUI $0, 0
+STD 0, $0
+ADDI $0, 1
+LLI $1, 0
+LUI $1, 0
+LLI $2, 0xFF
+LUI $2, 0xFF
+ADDI $1, 1
+CPP $1, $2
+BNE -2
+LLI $0, 10
+LUI $0, 10
+STD 0, $0
+J -3

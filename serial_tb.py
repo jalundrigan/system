@@ -23,6 +23,18 @@ def read_memory(address):
     ser.flush()
     return ser.read(2)
 
+def send_stop_init_cmd():
+    ser.write(STOP_INIT.to_bytes(1, 'little'))
+    ser.flush()
+    return ser.read(1)
+
+def check_write_ack(ack_val):
+    if ack_val != ACK_CMD:
+        print('Bad ACK value: ', ack_val)
+        while True:
+            pass
+
+
 def random_test():
     print('STARTING RANDOM TEST\n\n')
 
@@ -47,7 +59,8 @@ def random_test():
                     print('REPEAT')
             value = random.randrange(65536)
             write_list.append([address, value])
-            write_memory(address, value)
+            check_write_ack(write_memory(address, value))
+                
 
         for i in range(list_size - 1, -1, -1):
             read_val = read_memory(write_list[i][0])
@@ -60,7 +73,6 @@ def random_test():
                 print(write_list)
                 while True:
                     pass
-
 
 
 def manual_test():
@@ -87,28 +99,19 @@ def manual_test():
 def scan_test():
     print('STARTING SCAN TEST\n\n')
 
-    for i in range(0, 2**24, 1000):
-        print('W - ' + str(i))
+    for address in range(0, 2**24, 1000):
+        value = (address + 1) % 65536
+        print('W - %6.6x      %5d' % (address, value))
+        check_write_ack(write_memory(address, value))
 
-        address = i
-        value = (i + 1) % 65536
-        ack = write_memory(address, value)
-
-        if ack != b'\x45':
-            print('ACK Error')
-            print(ack)
-            while True:
-                pass
-
-    print('WRITE COMPLETE\n\n')
+    print('WRITE COMPLETE')
+    print('Press ENTER to continue\n\n')
     input()
 
-    for i in range(0, 2**24, 1000):
-        address = i
-        expected = (i + 1) % 65536
-
+    for address in range(0, 2**24, 1000):
+        expected = (address + 1) % 65536
         val = read_memory(address)
-        print(int.from_bytes(val, 'little'))
+        print('R - %6.6x      %5d' % (address, int.from_bytes(val, 'little')))
 
         if val != expected.to_bytes(2, 'little'):
             print('READ Error')
@@ -116,7 +119,8 @@ def scan_test():
             while True:
                 pass
 
-    print('READ COMPLETE\n\n')
+    print('READ COMPLETE')
+    print('Press ENTER to continue\n\n')
     input()
 
     print('SCAN TEST SUCCESS!')
@@ -124,35 +128,67 @@ def scan_test():
 
 def send_program():
 
-    print('Enter file name')
-    file_name = input()
-    mem_address = 0
+    #print('Enter file name')
+    #file_name = input()
+    file_name = './assembler/out'
     write_vals = []
+
+    print('Preparing to open file')
 
     with open(file_name, mode='rb') as file:
         file_data = list(file.read())
 
+        print(file_data)
+
         print('File opened successfully with size: ', len(file_data), ' bytes')
+        print('Beginning memory write')
         
+        mem_address = 0
         byte_index = 0
         while byte_index < len(file_data):
             low_byte = file_data[byte_index]
             high_byte = file_data[byte_index + 5]
             print(hex(low_byte), ',', end='')
             print(hex(high_byte))
-            write_memory_in_bytes(mem_address, low_byte, high_byte)
-            write_vals.append(write_vals)
+            check_write_ack(write_memory_in_bytes(mem_address, low_byte, high_byte))
+            write_vals.append([low_byte, high_byte])
 
             mem_address += 1
             byte_index += 10
 
-    for i in range(mem_address):
+    print('Beginning memory read')
 
+    for i in range(len(write_vals)):
+        expected_low = write_vals[i][0]
+        expected_high = write_vals[i][1]
+
+        read_bytes = list(read_memory(i))
+        read_low = read_bytes[0]
+        read_high = read_bytes[1]
+
+        if(read_low != expected_low or read_high != expected_high):
+            print('SEND PROGRAM Error')
+            print('Expected:')
+            print(expected_low)
+            print(expected_high)
+            print('Read:')
+            print(read_low)
+            print(read_high)
+            while True:
+                pass
+    
+    print('Ending init sequence')
+
+    check_write_ack(send_stop_init_cmd())
+
+    print('Memory filled successfully')
 
 
 
 WRITE_CMD = 0
 READ_CMD = 1
+STOP_INIT = 2
+ACK_CMD = b'\x45'
 
 print('STARTING SERIAL\n\n')
 
@@ -163,7 +199,8 @@ ser.parity = serial.PARITY_EVEN
 random.seed()
 
 #scan_test()
-manual_test()
+#manual_test()
 #random_test()
+send_program()
 
 ser.close()

@@ -27,7 +27,7 @@ module system_init
       );
 
 
-enum logic [2:0] {
+enum logic [3:0] {
                     COMMAND, 
                     WRITE_MEM, 
                     WRITE_SERIAL_ACK, 
@@ -35,6 +35,7 @@ enum logic [2:0] {
                     READ_MEM_2, 
                     WRITE_SERIAL_DATA_1,
                     WRITE_SERIAL_DATA_2,
+                    ACK_STOP_INIT,
                     COMPLETE_INIT
                  } state;
 
@@ -96,7 +97,8 @@ begin
                else
                if(serial_data_in == 8'd2)
                begin
-                  state <= COMPLETE_INIT;
+                  // STOP_INIT command received
+                  state <= ACK_STOP_INIT;
                end
                else
                begin
@@ -226,9 +228,20 @@ begin
          end
       end
       else
+      if(state == ACK_STOP_INIT)
+      begin
+         if(serial_out_rdy == 1'b1)
+         begin
+            serial_data_out <= 8'd69;
+            serial_out_en <= 1'b1;
+            state <= COMPLETE_INIT;
+         end
+      end
+      else
       if(state == COMPLETE_INIT)
       begin
          cpu_enable <= 1'b1;
+         serial_out_en <= 1'b0;
       end
 
    end
