@@ -34,13 +34,16 @@ module mem_cntrl
         output logic [12:0] a,
         output logic sdram_clk,
 
-        inout [15:0] dq,
+        inout [15:0] dq
 
+`ifndef DISPLAY_PC
         /*
           Interface to 7 segment
         */
+        ,
         output logic [5:0] seg_sel,
         output logic [7:0] seg_data
+`endif
       );
 
 
@@ -85,7 +88,16 @@ mem_driver  #(
                 .dq(dq)
             );
 
+assign mem_rdy = dram_mem_rdy;
 
+`ifdef DISPLAY_PC
+
+assign dram_mem_r_en = mem_r_en;
+assign dram_mem_w_en = mem_w_en;
+assign mem_data_out = dram_mem_data_out;
+assign mem_cplt = dram_mem_cplt;
+
+`else
 /*
    Seven segment driver
 */
@@ -115,7 +127,6 @@ segment_driver SEG
                     .dp(seg_data_invert[7])
                 );
 
-assign mem_rdy = dram_mem_rdy;
 logic read_io;
 logic write_io;
 logic io_request;
@@ -129,7 +140,7 @@ begin
   read_io <= 1'b0;
   write_io <= 1'b0;
 
-  if( (mem_rdy == 1'b1 || last_mem_rdy == 1'b1) && mem_addr == 16'h100 )
+  if( (mem_rdy == 1'b1 || last_mem_rdy == 1'b1) && mem_addr == 16'h101 )
   begin
     if(mem_r_en == 1'b1)
     begin
@@ -184,5 +195,7 @@ begin
   end
 
 end
+
+`endif
   
 endmodule

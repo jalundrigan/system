@@ -1,4 +1,4 @@
-module cpu_tb;
+module assembler;
 
 parameter MEM_ADDR_WIDTH = 16;
 parameter REG_ADDR_WIDTH = 4;

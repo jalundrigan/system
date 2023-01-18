@@ -1,3 +1,5 @@
+//`define DISPLAY_PC -- defined in Quartus Verilog Macros
+
 module top
 (
    input logic clk,
@@ -20,6 +22,11 @@ module top
 
    input logic uart_rx,
    output logic uart_tx
+
+`ifdef SIMULATION
+   ,
+   input logic cpu_enable
+`endif
 );
 
 parameter MEM_ADDR_WIDTH = 24;
@@ -93,7 +100,9 @@ serial_driver #(
 /*
    System Initialization
 */
+`ifndef SIMULATION
 logic cpu_enable;
+`endif
 
 system_init #(
                .ADDR_WIDTH(MEM_ADDR_WIDTH),
@@ -118,15 +127,22 @@ system_init #(
                .mem_w_en(init_mem_w_en),
                .mem_r_en(init_mem_r_en),
                .mem_addr(init_mem_addr),
-               .mem_data_in(init_mem_data_in),
+               .mem_data_in(init_mem_data_in)
 
+`ifndef SIMULATION
+               ,
                .cpu_enable(cpu_enable)
+`endif
             );
-
 
 /*
    CPU
 */
+
+`ifdef DISPLAY_PC
+   logic[MEM_ADDR_WIDTH-1:0] pc;
+`endif
+
 cpu  #(
          .MEM_ADDR_WIDTH(MEM_ADDR_WIDTH),
          .REG_ADDR_WIDTH(REG_ADDR_WIDTH),
@@ -146,6 +162,11 @@ cpu  #(
          .mem_data_out(mem_data_out),
          .mem_rdy(mem_rdy),
          .mem_cplt(mem_cplt)
+
+`ifdef DISPLAY_PC
+         ,
+         .pc(pc)
+`endif
       );
 
 
@@ -185,10 +206,48 @@ mem_cntrl  #(
                 .bs(sdram_ba),
                 .a(sdram_addr),
                 .sdram_clk(sdram_clk),
-                .dq(sdram_dq),
-
+                .dq(sdram_dq)
+`ifndef DISPLAY_PC
+                ,
                 .seg_sel(seg_sel),
                 .seg_data(seg_data)
+`endif
             );
+
+
+`ifdef DISPLAY_PC
+/*
+   Seven segment driver
+*/
+logic[23:0] seg_val;
+
+logic[7:0] seg_data_invert;
+logic[5:0] seg_sel_invert;
+
+assign seg_data = ~seg_data_invert;
+assign seg_sel = ~seg_sel_invert;
+
+assign seg_val[15:0] = pc;
+assign seg_val[23:16] = 8'b0;
+
+segment_driver SEG
+                (
+                    .clk(clk),
+                    .rst(rst),
+
+                    .val(seg_val),
+
+                    .sel(seg_sel_invert),
+                    .seg_a(seg_data_invert[0]),
+                    .seg_b(seg_data_invert[1]),
+                    .seg_c(seg_data_invert[2]),
+                    .seg_d(seg_data_invert[3]),
+                    .seg_e(seg_data_invert[4]),
+                    .seg_f(seg_data_invert[5]),
+                    .seg_g(seg_data_invert[6]),
+                    .dp(seg_data_invert[7])
+                );
+`endif
+
 
 endmodule

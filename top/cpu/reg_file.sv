@@ -20,15 +20,23 @@ module reg_file
         output logic[DATA_WIDTH-1:0] reg_r_data_2
 	);
 
-logic[REG_FILE_SIZE-1:0][DATA_WIDTH-1:0] reg_file;
+logic[REG_FILE_SIZE-1:0] reg_file[DATA_WIDTH-1:0];
 
 
 assign reg_r_data_1 = reg_file[reg_r_addr_1];
 assign reg_r_data_2 = reg_file[reg_r_addr_2];
 
-always_ff @(posedge clk)
+always_ff @(posedge clk or posedge rst)
 begin
 
+	if(rst == 1'b1)
+	begin
+		for(int i = 0;i < REG_FILE_SIZE;i ++)
+		begin
+			reg_file[i] <= 16'b0;
+		end
+	end
+	else
     if(reg_w_en == 1'b1)
     begin
         reg_file[reg_w_addr] <= reg_w_data;

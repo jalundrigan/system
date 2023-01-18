@@ -97,9 +97,21 @@ def manual_test():
 
 
 def scan_test():
+
+    print('Enter step size')
+    step_size = int(input())
+
+    print('Enter number of checks (-1 for whole memory)')
+    num_checks = int(input())
+
+    addr_lim = step_size * num_checks
+
+    if num_checks == -1:
+        addr_lim = 2**24
+
     print('STARTING SCAN TEST\n\n')
 
-    for address in range(0, 2**24, 1000):
+    for address in range(0, addr_lim, step_size):
         value = (address + 1) % 65536
         print('W - %6.6x      %5d' % (address, value))
         check_write_ack(write_memory(address, value))
@@ -108,7 +120,7 @@ def scan_test():
     print('Press ENTER to continue\n\n')
     input()
 
-    for address in range(0, 2**24, 1000):
+    for address in range(0, addr_lim, step_size):
         expected = (address + 1) % 65536
         val = read_memory(address)
         print('R - %6.6x      %5d' % (address, int.from_bytes(val, 'little')))

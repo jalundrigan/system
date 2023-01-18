@@ -31,6 +31,11 @@ module core
 
             input logic[DATA_WIDTH-1:0] reg_r_data_1,
             input logic[DATA_WIDTH-1:0] reg_r_data_2
+
+`ifdef DISPLAY_PC
+            ,
+            output logic[MEM_ADDR_WIDTH-1:0] pc_out
+`endif
         );
 
 /*
@@ -147,6 +152,10 @@ logic branch_pending;
     Program Counter Definitions
 */
 logic[MEM_ADDR_WIDTH-1:0] pc;
+
+`ifdef DISPLAY_PC
+    assign pc_out = pc;
+`endif
 
 /*
     State Machine Definitions
@@ -431,7 +440,7 @@ begin
     if(stage_0_buf[15:13] == 3'b001)
     begin
         // Jump
-        mem_addr_dec <= stage_0_buf[s_0_pc_top:s_0_pc_bot] - 1;
+        mem_addr_dec <= stage_0_buf[s_0_pc_top:s_0_pc_bot] - ($bits(mem_addr_dec))'('b1);
         w_reg_addr_dec <= ($bits(w_reg_addr_dec))'('b0); // Can be dont care
         op_a_dec <= ($bits(op_a_dec))'('b0); // Can be dont care
         op_b_dec <= ($bits(op_b_dec))'('b0); // Can be dont care
@@ -505,7 +514,7 @@ begin
     begin
         // Branch
 
-        mem_addr_dec <= stage_0_buf[s_0_pc_top:s_0_pc_bot] - 1;
+        mem_addr_dec <= stage_0_buf[s_0_pc_top:s_0_pc_bot] - ($bits(mem_addr_dec))'('b1);
         w_reg_addr_dec <= ($bits(w_reg_addr_dec))'('b0); // Can be dont care
         op_a_dec <= ($bits(op_a_dec))'('b0); // Can be dont care
         op_b_dec <= ($bits(op_b_dec))'('b0); // Can be dont care
@@ -694,7 +703,7 @@ begin
             begin
                 // Store indirect
                 mem_addr_dec <= reg_r_data_1;
-                w_reg_addr_dec <= ($bits(op_a_dec))'('b0); // Can be dont care
+                w_reg_addr_dec <= ($bits(w_reg_addr_dec))'('b0); // Can be dont care
                 op_a_dec <= ($bits(op_a_dec))'('b0);
                 op_b_dec <= reg_r_data_2;
                 alu_op_dec <= 4'b0000;
@@ -763,13 +772,13 @@ begin
         
         if(mem_rdy == 1'b1 && stage_2_buf[s_2_valid] == 1'b1 && stage_2_buf[s_2_branch] == 1'b1)
         begin
-            pc <= stage_2_buf[s_2_mem_addr_top:s_2_mem_addr_bot] + 1;
+            pc <= stage_2_buf[s_2_mem_addr_top:s_2_mem_addr_bot] + ($bits(pc))'('b1);
         end
         else
         if(mem_cplt == 1'b1 && state == INSTR && load_0 == 1'b0)
         begin
             // this should specify bit width======================================================================================================================
-            pc <= pc - 1;
+            pc <= pc - ($bits(pc))'('b1);
         end
         else
         if(mem_rdy == 1'b1 && mem_r_en == 1'b1 &&
@@ -780,7 +789,7 @@ begin
             )
         )
         begin
-            pc <= pc + 1;
+            pc <= pc + ($bits(pc))'('b1);
         end
         else
         begin

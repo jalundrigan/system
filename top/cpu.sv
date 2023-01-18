@@ -20,8 +20,12 @@ module cpu
             input logic[DATA_WIDTH-1:0] mem_data_out,
             input logic mem_rdy,
             input logic mem_cplt
-        );
 
+`ifdef DISPLAY_PC
+            ,
+            output logic[MEM_ADDR_WIDTH-1:0] pc
+`endif
+        );
 
 logic[REG_ADDR_WIDTH-1:0] reg_r_addr_1;
 logic[REG_ADDR_WIDTH-1:0] reg_r_addr_2;
@@ -59,6 +63,11 @@ core    #(
 
             .reg_r_data_1(reg_r_data_1),
             .reg_r_data_2(reg_r_data_2)
+
+`ifdef DISPLAY_PC
+            ,
+            .pc_out(pc)
+`endif
         );
 
 
