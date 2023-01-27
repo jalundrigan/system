@@ -173,7 +173,7 @@ begin
     
   if(rst == 1'b1)
   begin
-    seg_val[23:0] <= 24'h00BEEF;
+    seg_val[23:0] <= 24'h000100;
     last_mem_rdy <= 1'b0;
   end
   else

@@ -649,10 +649,21 @@ function int mem_compare();
 
 	for(int i = 0;i < MEM_SIZE;i ++)
 	begin
-		if(mock_mem[i] != sym_mem[i])
+		if(i == 256)
 		begin
-			$display("mock != mem @address %d: %x != %x", i, mock_mem[i], sym_mem[i]);
-			ret = 0;
+			if(mock_mem[i] != TOP.MEM_CTRL.seg_val[15:0])
+			begin
+				$display("mock != mem @address %d: %x != %x", i, mock_mem[i], TOP.MEM_CTRL.seg_val[15:0]);
+				ret = 0;
+			end
+		end
+		else
+		begin
+			if(mock_mem[i] != sym_mem[i])
+			begin
+				$display("mock != mem @address %d: %x != %x", i, mock_mem[i], sym_mem[i]);
+				ret = 0;
+			end
 		end
 	end
 

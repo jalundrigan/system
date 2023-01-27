@@ -777,7 +777,6 @@ begin
         else
         if(mem_cplt == 1'b1 && state == INSTR && load_0 == 1'b0)
         begin
-            // this should specify bit width======================================================================================================================
             pc <= pc - ($bits(pc))'('b1);
         end
         else

@@ -81,9 +81,6 @@ begin
 	end
 	else
 	begin
-
-		flag_reg <= 8'b0; // Can be dont care;
-
 		if(alu_active == 1'b1)
 		begin
 			if(opcode == 4'b1000)
