@@ -210,7 +210,7 @@ begin
                 next_state <= IDLE;
 
                 // should we also check that either mem_rdy or mem_cplt are set? so we don't buffer a read or write that was not meant to be registered
-                if((mem_r_en == 1'b1 || mem_w_en == 1'b1) && (mem_rdy == 1'b1 || mem_cplt == 1'b1))
+                if((mem_r_en == 1'b1 || mem_w_en == 1'b1) && mem_rdy == 1'b1)
                 begin
                     buffered_mem_request <= 1'b1;
                     mem_addr_buf <= mem_addr;
@@ -364,6 +364,7 @@ begin
             begin
                 cs_n <= 1'b0;
 
+                /*
                 if((mem_r_en == 1'b1 || mem_w_en == 1'b1) && init == 1'b1 && buffered_mem_request == 1'b0)
                 begin
                     buffered_mem_request <= 1'b1;
@@ -372,6 +373,7 @@ begin
                     mem_r_en_buf <= mem_r_en;
                     mem_w_en_buf <= mem_w_en;
                 end
+                */
             end
             else
             begin
@@ -410,6 +412,10 @@ begin
                 state <= next_state;
                 timer <= 16'b0;
                 auto_refresh_reset <= 1'b0;
+                if(next_state == IDLE && buffered_mem_request == 1'b0)
+                begin
+                    mem_rdy <= 1'b1;
+                end
             end
         end
 

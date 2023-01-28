@@ -105,7 +105,7 @@ begin
 
 	$display("==========\nStart of file read and mem init\n==========\n");
 
-	file = $fopen("../assembler/tester.jasm", "r");
+	file = $fopen("../assembler/program.jasm", "r");
 
 	if(file == 0)
 	begin
@@ -688,7 +688,6 @@ function int mem_compare();
 
 endfunction
 
-
 always @(posedge clk)
 begin
 
@@ -702,7 +701,7 @@ begin
 			pending = 0;
 		end
 
-		$display("%s\n", test_buf.cmd);
+		$display("RUNNING: %s", test_buf.cmd);
 
 		if(test_buf.cmd == "LLI")
 		begin
@@ -855,6 +854,10 @@ begin
 			$stop;
 		end
 
+		$display("%s %d, %d", pipe_buf[0].cmd, pipe_buf[0].op_1, pipe_buf[0].op_2);
+		$display("%s %d, %d", pipe_buf[1].cmd, pipe_buf[1].op_1, pipe_buf[1].op_2);
+		$display("%s %d, %d\n", pipe_buf[2].cmd, pipe_buf[2].op_1, pipe_buf[2].op_2);
+
 		if(mem_compare() == 0)
 		begin
 			$display("Runtime error @instruction %d: %s %d, %d", pending_index-1, test_buf.cmd, test_buf.op_1, test_buf.op_2);
@@ -930,5 +933,16 @@ end
 assign sdram_dq = 	TOP.MEM_CTRL.MEM_DRV.state == TOP.MEM_CTRL.MEM_DRV.MEM_READ &&
 					TOP.MEM_CTRL.MEM_DRV.timer == 16'd4
 					? sym_mem[TOP.MEM_CTRL.MEM_DRV.mem_addr_buf] : ($bits(sdram_dq))'('bz);
+
+/*
+always @(posedge clk)
+begin
+	if(TOP.CPU.CORE.mem_cplt == 1'b1 && TOP.CPU.CORE.mem_rdy == 1'b0)
+	begin
+		$display("mem_cplt vs mem_rdy error");
+		$stop;
+	end
+end
+*/
 
 endmodule

@@ -13,18 +13,12 @@ vlog -reportprogress 30 -work work C:/Users/jalun/Desktop/Computer_Proj_IPs/syst
 vsim -gui work.top_tb -t ns
 
 add wave -position insertpoint -radix hex \
-sim:/top_tb/*
-
-add wave -position insertpoint -radix hex \
-sim:/top_tb/TOP/*
-
-add wave -position insertpoint -radix hex \
-sim:/top_tb/TOP/MEM_CTRL/*
-
-add wave -position insertpoint -radix hex \
 sim:/top_tb/TOP/CPU/CORE/*
 
 add wave -position insertpoint -radix hex \
 sim:/top_tb/TOP/CPU/REG/reg_file
 
-run 500us
+add wave -position insertpoint -radix hex \
+sim:/top_tb/TOP/MEM_CTRL/MEM_DRV/*
+
+run 100ms

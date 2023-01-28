@@ -140,7 +140,7 @@ begin
   read_io <= 1'b0;
   write_io <= 1'b0;
 
-  if( (mem_rdy == 1'b1 || last_mem_rdy == 1'b1) && mem_addr == 16'h101 )
+  if( (mem_rdy == 1'b1 || last_mem_rdy == 1'b1) && mem_addr == 16'h100 )
   begin
     if(mem_r_en == 1'b1)
     begin

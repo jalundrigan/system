@@ -146,12 +146,15 @@ logic branch_on_nonequal_flag_dec;
 logic branch_on_less_flag_dec;
 logic branch_on_greater_flag_dec;
 
-logic branch_pending;
-
 /*
     Program Counter Definitions
 */
 logic[MEM_ADDR_WIDTH-1:0] pc;
+logic[MEM_ADDR_WIDTH-1:0] pc_buf;
+logic retry_pc;
+logic pc_branch;
+logic pc_stage_0_full;
+logic pc_increment;
 
 `ifdef DISPLAY_PC
     assign pc_out = pc;
@@ -185,13 +188,7 @@ assign mem_addr = (
 assign mem_data_in = stage_2_buf[s_2_value_top:s_2_value_bot];
 
 
-assign mem_r_en =   (
-                        mem_w_en == 1'b0 && 
-                        (
-                            branch_pending == 1'b0 ||
-                            (stage_2_buf[s_2_valid] == 1'b1 && stage_2_buf[s_2_branch] == 1'b1)
-                        )
-                    ) ? 1'b1 : 1'b0;
+assign mem_r_en = ~mem_w_en;
 
 assign mem_w_en = (
                     mem_rdy == 1'b1 && 
@@ -231,6 +228,11 @@ begin
     else
     begin
 
+        if(pc_branch == 1'b1)
+        begin
+            stage_0_buf[s_0_valid] <= 1'b0;
+        end
+        else
         if(load_0 == 1'b1)
         begin
             stage_0_buf[s_0_data_top:s_0_data_bot] <= mem_data_out;
@@ -251,7 +253,7 @@ end
 assign load_0 = (
                     state == INSTR && mem_cplt == 1'b1 &&
                     (load_1 == 1'b1 || (load_1 == 1'b0 && stage_0_buf[s_0_valid] == 1'b0)) &&
-                    branch_pending == 1'b0
+                    pc_branch == 1'b0
                 ) ? 1'b1 : 1'b0;
 
 /*
@@ -267,6 +269,11 @@ begin
     else
     begin
 
+        if(pc_branch == 1'b1)
+        begin
+            stage_1_buf[s_1_valid] <= 1'b0;
+        end
+        else
         if(load_1 == 1'b1)
         begin
             stage_1_buf[s_1_mem_addr_top:s_1_mem_addr_bot] <= mem_addr_dec;
@@ -384,7 +391,7 @@ begin
 end
 
 assign load_2 = (
-                    stage_1_buf[s_1_valid] == 1'b1 &&
+                    stage_1_buf[s_1_valid] == 1'b1 && pc_branch == 1'b0 &&
                     (
                         (state == MEM && mem_cplt == 1'b1) ||
                         (stage_2_buf[s_2_valid] == 1'b1 && stage_2_buf[s_2_branch] == 1'b1 && mem_rdy == 1'b1) ||
@@ -743,57 +750,97 @@ begin
     
 end
 
-assign branch_pending = (
-                            (stage_0_buf[s_0_valid] == 1'b1 && jump_flag_dec == 1'b1) ||
-                            (stage_0_buf[s_0_valid] == 1'b1 && branch_on_equal_flag_dec == 1'b1) ||
-                            (stage_0_buf[s_0_valid] == 1'b1 && branch_on_nonequal_flag_dec == 1'b1) ||
-                            (stage_0_buf[s_0_valid] == 1'b1 && branch_on_less_flag_dec == 1'b1) ||
-                            (stage_0_buf[s_0_valid] == 1'b1 && branch_on_greater_flag_dec == 1'b1) ||
-                            (stage_1_buf[s_1_valid] == 1'b1 && stage_1_buf[s_1_jump] == 1'b1) ||
-                            (stage_1_buf[s_1_valid] == 1'b1 && stage_1_buf[s_1_branch_on_equal] == 1'b1) ||
-                            (stage_1_buf[s_1_valid] == 1'b1 && stage_1_buf[s_1_branch_on_nonequal] == 1'b1) ||
-                            (stage_1_buf[s_1_valid] == 1'b1 && stage_1_buf[s_1_branch_on_less] == 1'b1) ||
-                            (stage_1_buf[s_1_valid] == 1'b1 && stage_1_buf[s_1_branch_on_greater] == 1'b1) ||
-                            (stage_2_buf[s_2_valid] == 1'b1 && stage_2_buf[s_2_branch] == 1'b1)
-                        ) ? 1'b1 : 1'b0;
+
 
 /*
     Program Counter Logic
 */
-always_ff @(posedge clk or posedge rst)
+always_comb
 begin
 
-    if(rst == 1'b1)
+    pc_branch <= 1'b0;
+    pc_stage_0_full <= 1'b0;
+    pc_increment <= 1'b0;
+
+    if(mem_rdy == 1'b1 && stage_2_buf[s_2_valid] == 1'b1 && stage_2_buf[s_2_branch] == 1'b1)
     begin
-        pc <= (MEM_ADDR_WIDTH)'('b0);
+        pc_branch <= 1'b1;
     end
     else
+    if(mem_cplt == 1'b1 && state == INSTR && load_0 == 1'b0)
     begin
-        
-        if(mem_rdy == 1'b1 && stage_2_buf[s_2_valid] == 1'b1 && stage_2_buf[s_2_branch] == 1'b1)
-        begin
-            pc <= stage_2_buf[s_2_mem_addr_top:s_2_mem_addr_bot] + ($bits(pc))'('b1);
-        end
-        else
-        if(mem_cplt == 1'b1 && state == INSTR && load_0 == 1'b0)
-        begin
-            pc <= pc - ($bits(pc))'('b1);
-        end
-        else
-        if(mem_rdy == 1'b1 && mem_r_en == 1'b1 &&
+        pc_stage_0_full <= 1'b1;
+    end
+    else
+    if(mem_rdy == 1'b1 && mem_r_en == 1'b1 &&
             (
                 stage_2_buf[s_2_mem_r_en] == 1'b0 || 
                 stage_2_buf[s_2_valid] == 1'b0 ||
                 state == MEM
             )
-        )
+            )
+    begin
+        pc_increment <= 1'b1;
+    end
+
+end
+
+always_comb
+begin
+
+    if(pc_stage_0_full == 1'b1 && retry_pc == 1'b0)
+    begin
+        pc <= pc_buf - ($bits(pc_buf))'('b1);
+    end
+    else
+    if(pc_increment == 1'b1 && retry_pc == 1'b1 && state == INSTR)
+    begin
+        pc <= pc_buf + ($bits(pc_buf))'('b1);
+    end
+    else
+    begin
+        pc <= pc_buf;
+    end
+
+end
+
+always_ff @(posedge clk or posedge rst)
+begin
+
+    if(rst == 1'b1)
+    begin
+        pc_buf <= (MEM_ADDR_WIDTH)'('b0);
+        retry_pc <= 1'b0;
+    end
+    else
+    begin
+        
+        if(pc_branch == 1'b1)
         begin
-            pc <= pc + ($bits(pc))'('b1);
+            pc_buf <= stage_2_buf[s_2_mem_addr_top:s_2_mem_addr_bot] + ($bits(pc_buf))'('b1);
         end
         else
+        if(pc_stage_0_full == 1'b1)
         begin
-            pc <= pc;
+            if(retry_pc == 1'b0)
+            begin
+                pc_buf <= pc_buf - ($bits(pc_buf))'('b1);
+            end
+            retry_pc <= 1'b1;
         end
+        else
+        if(pc_increment == 1'b1 && retry_pc == 1'b1 && state == INSTR)
+        begin
+            pc_buf <= pc_buf + ($bits(pc_buf))'('d2);
+            retry_pc <= 1'b0;
+        end
+        else
+        if(pc_increment == 1'b1)
+        begin
+            pc_buf <= pc_buf + ($bits(pc_buf))'('b1);
+            retry_pc <= 1'b0;
+        end
+
     end
 end
 
