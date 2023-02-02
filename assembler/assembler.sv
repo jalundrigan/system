@@ -231,8 +231,17 @@ begin
 	int op_2;
 	int status;
 	int i = 0;
+	int out, in;
 
 	$display("==========\nStart of file read and mem init\n==========\n");
+
+	$system("python generator.py random");
+
+
+	$fclose(out);
+	$fclose(in);
+
+	$stop;
 
 	read_file = $fopen("tester.jasm", "r");
 	write_file = $fopen("out", "wb");
