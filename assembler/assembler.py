@@ -11,11 +11,11 @@ def is_comment(line):
     else:
         return False
 
-def parse(file_name):
+def parse(read_file_name):
     instr_list = []
     line_count = 0
 
-    with open(file_name, mode='r') as read_file:
+    with open(read_file_name, mode='r') as read_file:
         for line in read_file:
             line_count += 1
 
@@ -32,11 +32,11 @@ def parse(file_name):
 
             instr_list.append(line_list)
     
-    print(instr_list)
     return instr_list
     
-def assemble(instr_list):
-    with open('out', mode='wb') as write_file:
+
+def assemble(write_file_name, instr_list):
+    with open(write_file_name, mode='wb') as write_file:
         instr_num = 0
         for instr in instr_list:
             try:
@@ -79,7 +79,6 @@ def assemble(instr_list):
                     
                     write_str += instr_arg
 
-                print(write_str)
                 write_file.write(int(write_str, 2).to_bytes(2, byteorder='big'))
 
             except KeyError:
@@ -90,10 +89,9 @@ def assemble(instr_list):
 
 
 if __name__ == "__main__":
-    #print('Arguments count: ', len(sys.argv))
-    for i, arg in enumerate(sys.argv):
-        #print(f'Argument {i}: {arg}')
-        if i != 0:
-            assemble(parse(arg))
-            #parse(arg)
-            #assemble(5)
+    if len(sys.argv) == 3:
+        assemble(sys.argv[2], parse(sys.argv[1]))
+    elif len(sys.argv) == 2 and sys.argv[1] == 'help':
+        print('--HELP--\n', sys.argv[0], ' input_file output_file')
+    else:
+        print('Expecting 2 arguments for ', sys.argv[0])

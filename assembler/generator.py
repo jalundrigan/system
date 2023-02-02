@@ -2,7 +2,7 @@ import sys
 import random
 from isa_lib import *
 
-def generate_random(file):
+def generate_random(write_file):
     # instructions with aperture from [0, 65534]
     instr_apert_low = 0
     instr_apert_high = random.randrange(65535)
@@ -48,20 +48,24 @@ def generate_random(file):
             if arg != None:
                 instr += arg + ', '
 
-        file.write(instr[:-2] + '\n')
+        write_file.write(instr[:-2] + '\n')
 
-    file.write('J ' + str(random.randrange(-2**(isa['J']['ARGS'][0]['WIDTH'] - 1), 0)) + '\n')
+    write_file.write('J ' + str(random.randrange(-2**(isa['J']['ARGS'][0]['WIDTH'] - 1), 0)) + '\n')
 
-def generate_program(type):    
+
+def generate_program(write_file_name, program_type):    
     random.seed()
-    with open('out.jasm', mode='w') as out:
-        if type == 'random':
-            generate_random(out)
+    with open(write_file_name, mode='w') as write_file:
+        if program_type == 'random':
+            generate_random(write_file)
 
 
 if __name__ == "__main__":
-    #print('Arguments count: ', len(sys.argv))
-    for i, arg in enumerate(sys.argv):
-        #print(f'Argument {i}: {arg}')
-        if i != 0:
-            generate_program(arg)
+    if len(sys.argv) == 3:
+        generate_program(sys.argv[2], sys.argv[1])
+    elif len(sys.argv) == 2 and sys.argv[1] == 'help':
+        print('--HELP--\n', sys.argv[0], ' program_type output_file')
+        print('Program type options: ')
+        print('random')
+    else:
+        print('Expecting 2 arguments for ', sys.argv[0])
