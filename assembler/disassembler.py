@@ -58,6 +58,11 @@ def disassemble(write_file_name, instr_list):
                         elif isa_arg['TYPE'] == 'REG':
                             write_arg_list[isa_arg['ASM_INDEX']] += '$'
                         
+                        if isa_arg['SIGNED'] == True:
+                            if instr_arg >= 2**(isa_arg['WIDTH'] - 1):
+                                # take the compliment
+                                instr_arg = -(2**(isa_arg['WIDTH']) - instr_arg)
+
                         write_arg_list[isa_arg['ASM_INDEX']] += str(instr_arg)
 
                     for arg in write_arg_list:

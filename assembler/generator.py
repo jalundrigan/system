@@ -3,11 +3,15 @@ import random
 from isa_lib import *
 
 def generate_random(write_file):
-    # instructions with aperture from [0, 65534]
+    # instruction aperture from [0, 510] or [0, 65534]
     instr_apert_low = 0
-    instr_apert_high = random.randrange(65535)
+    choice = random.randrange(2)
+    if choice == 0:
+        instr_apert_high = random.randrange(2**9 - 1)
+    elif choice == 1:
+        instr_apert_high = random.randrange(65535)
 
-    # data with aperture from [instr_apert_high+1, 65535]
+    # data aperture from [instr_apert_high+1, 65535]
     data_apert_low = instr_apert_high + 1
     data_apert_high = 65535
 

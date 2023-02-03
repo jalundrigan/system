@@ -7,12 +7,14 @@ isa = {
                             {
                                 'TYPE' : 'LIT',
                                 'WIDTH' : 9,
-                                'ASM_INDEX' : 1
+                                'ASM_INDEX' : 1,
+                                'SIGNED' : False
                             },
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : False
                             }
                          ]   
             },
@@ -22,7 +24,8 @@ isa = {
                             {
                                 'TYPE' : 'LIT',
                                 'WIDTH' : 13,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : True
                             }
                          ]   
             },
@@ -32,12 +35,14 @@ isa = {
                             {
                                 'TYPE' : 'LIT',
                                 'WIDTH' : 9,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : False
                             },
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 1
+                                'ASM_INDEX' : 1,
+                                'SIGNED' : False
                             }
                          ]   
             },
@@ -47,12 +52,14 @@ isa = {
                             {
                                 'TYPE' : 'LIT',
                                 'WIDTH' : 8,
-                                'ASM_INDEX' : 1
+                                'ASM_INDEX' : 1,
+                                'SIGNED' : False
                             },
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : False
                             }
                          ]   
             },
@@ -62,12 +69,14 @@ isa = {
                             {
                                 'TYPE' : 'LIT',
                                 'WIDTH' : 8,
-                                'ASM_INDEX' : 1
+                                'ASM_INDEX' : 1,
+                                'SIGNED' : False
                             },
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : False
                             }
                          ]   
             },
@@ -77,7 +86,8 @@ isa = {
                             {
                                 'TYPE' : 'LIT',
                                 'WIDTH' : 11,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : True
                             }
                          ]   
             },
@@ -87,7 +97,8 @@ isa = {
                             {
                                 'TYPE' : 'LIT',
                                 'WIDTH' : 11,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : True
                             }
                          ]   
             },
@@ -97,7 +108,8 @@ isa = {
                             {
                                 'TYPE' : 'LIT',
                                 'WIDTH' : 11,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : True
                             }
                          ]   
             },
@@ -107,7 +119,8 @@ isa = {
                             {
                                 'TYPE' : 'LIT',
                                 'WIDTH' : 11,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : True
                             }
                          ]   
             },
@@ -117,12 +130,14 @@ isa = {
                             {
                                 'TYPE' : 'LIT',
                                 'WIDTH' : 9,
-                                'ASM_INDEX' : 1
+                                'ASM_INDEX' : 1,
+                                'SIGNED' : False
                             },
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : False
                             }
                          ]   
             },
@@ -132,12 +147,14 @@ isa = {
                             {
                                 'TYPE' : 'LIT',
                                 'WIDTH' : 9,
-                                'ASM_INDEX' : 1
+                                'ASM_INDEX' : 1,
+                                'SIGNED' : False
                             },
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : False
                             }
                          ]   
             },
@@ -147,12 +164,14 @@ isa = {
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 1
+                                'ASM_INDEX' : 1,
+                                'SIGNED' : False
                             },
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : False
                             }
                          ]   
             },
@@ -162,12 +181,14 @@ isa = {
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 1
+                                'ASM_INDEX' : 1,
+                                'SIGNED' : False
                             },
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : False
                             }
                          ]   
             },
@@ -177,12 +198,14 @@ isa = {
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 1
+                                'ASM_INDEX' : 1,
+                                'SIGNED' : False
                             },
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : False
                             }
                          ]   
             },
@@ -192,12 +215,14 @@ isa = {
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 1
+                                'ASM_INDEX' : 1,
+                                'SIGNED' : False
                             },
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : False
                             }
                          ]   
             },
@@ -207,12 +232,14 @@ isa = {
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 1
+                                'ASM_INDEX' : 1,
+                                'SIGNED' : False
                             },
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : False
                             }
                          ]   
             },
@@ -222,12 +249,14 @@ isa = {
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 1
+                                'ASM_INDEX' : 1,
+                                'SIGNED' : False
                             },
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : False
                             }
                          ]   
             },
@@ -237,12 +266,14 @@ isa = {
                             {
                                 'TYPE' : None,
                                 'WIDTH' : 4,
-                                'ASM_INDEX' : None
+                                'ASM_INDEX' : None,
+                                'SIGNED' : False
                             },
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : False
                             }
                          ]   
             },
@@ -252,12 +283,14 @@ isa = {
                             {
                                 'TYPE' : None,
                                 'WIDTH' : 4,
-                                'ASM_INDEX' : None
+                                'ASM_INDEX' : None,
+                                'SIGNED' : False
                             },
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : False
                             }
                          ]   
             },
@@ -267,12 +300,14 @@ isa = {
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : False
                             },
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 1
+                                'ASM_INDEX' : 1,
+                                'SIGNED' : False
                             }
                          ]   
             },
@@ -282,12 +317,14 @@ isa = {
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 1
+                                'ASM_INDEX' : 1,
+                                'SIGNED' : False
                             },
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : False
                             }
                          ]   
             },
@@ -297,12 +334,14 @@ isa = {
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : False
                             },
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 1
+                                'ASM_INDEX' : 1,
+                                'SIGNED' : False
                             }
                          ]   
             },
@@ -312,12 +351,14 @@ isa = {
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 1
+                                'ASM_INDEX' : 1,
+                                'SIGNED' : False
                             },
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 0
+                                'ASM_INDEX' : 0,
+                                'SIGNED' : False
                             }
                          ]   
             },

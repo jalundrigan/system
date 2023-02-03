@@ -62,20 +62,24 @@ def assemble(write_file_name, instr_list):
                             throw_syntax_error(instr, instr_num, 'Expecting register')
                         instr_arg = instr_arg[1:]
                     
+
                     instr_arg = int(instr_arg)
-                    if instr_arg < 0:
-                        if isa_arg['TYPE'] == 'REG':
-                            throw_syntax_error(instr, instr_num, 'Register index must be positive')
+                    if (isa_arg['SIGNED'] == False) and (instr_arg > 2**(isa_arg['WIDTH']) - 1):
+                        throw_syntax_error(instr, instr_num, 'Unsigned argument out of bounds (too large)')
+                    elif (isa_arg['SIGNED'] == False) and (instr_arg < 0):
+                        throw_syntax_error(instr, instr_num, 'Expecting unsigned argument')
+                    elif (isa_arg['SIGNED'] == True) and (instr_arg > 2**(isa_arg['WIDTH'] - 1) - 1):
+                        throw_syntax_error(instr, instr_num, 'Signed argument out of bounds (too large)')
+                    elif (isa_arg['SIGNED'] == True) and (instr_arg < -2**(isa_arg['WIDTH'] - 1)):
+                        throw_syntax_error(instr, instr_num, 'Signed argument out of bounds (too small)')
+                    elif (isa_arg['SIGNED'] == True) and (instr_arg < 0):
                         # take the compliment
-                        instr_arg = -instr_arg
-                        if instr_arg > 2**(isa_arg['WIDTH'] - 1):
-                            throw_syntax_error(instr, instr_num, 'Negative value out of bounds')
-                        instr_arg = 2**isa_arg['WIDTH'] - instr_arg
+                        instr_arg = 2**isa_arg['WIDTH'] + instr_arg
 
                     # write instr_arg as binary format with minimum isa_arg['WIDTH'] digits
                     instr_arg = '{:0={}b}'.format(instr_arg, isa_arg['WIDTH'])
                     if len(instr_arg) > isa_arg['WIDTH']:
-                        throw_syntax_error(instr, instr_num, 'Positive value out of bounds')
+                        throw_syntax_error(instr, instr_num, '!!! FATAL ASSEMBLER ERROR !!!')
                     
                     write_str += instr_arg
 
