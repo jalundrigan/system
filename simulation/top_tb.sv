@@ -33,6 +33,9 @@ logic uart_tx; // Don't read
 
 logic cpu_enable;
 
+logic [15:0] mem_map_init_addresses;
+logic [15:0] mem_map_init_values;
+
 top TOP
 	(
 	.clk(clk),
@@ -40,7 +43,7 @@ top TOP
 
 	.led(led),
 	.sdram_clk(sdram_clk),     //sdram clock
-	.sdram_cke(sdram_cke),     //sdram clock enable
+	.sdram_cke(sdram_cke),    //sdram clock enable
 	.sdram_cs_n(sdram_cs_n),    //sdram chip select
 	.sdram_we_n(sdram_we_n),    //sdram write enable
 	.sdram_cas_n(sdram_cas_n),   //sdram column address strobe
@@ -56,7 +59,10 @@ top TOP
 	.uart_rx(uart_rx),
 	.uart_tx(uart_tx),
 
-	.cpu_enable(cpu_enable)
+	.cpu_enable(cpu_enable),
+
+	.mem_map_init_addresses(mem_map_init_addresses),
+	.mem_map_init_values(mem_map_init_values)
 	);
 
 assign uart_rx = 1'b1;
@@ -92,511 +98,159 @@ logic[REG_FILE_SIZE-1:0][DATA_WIDTH-1:0] mock_reg;
 initial
 begin
 
-	int file;
-	string line;
-	string cmd;
-	string arg_1;
-	string arg_2;
-	string arg_3;
-	int op_1;
-	int op_2;
-	int status;
-	int i = 0;
+	automatic int binary_file;
+	automatic int symbol_file;
+	automatic string line;
+	automatic string arg;
+	automatic int op;
+	automatic int status;
+	automatic logic [7:0] file_byte;
+	automatic int is_high_byte = 1;
+	automatic int mem_addr = 0;
+	automatic int i;
 
-	$display("==========\nStart of file read and mem init\n==========\n");
+	mem_map_init_addresses = 16'd30;
 
-	file = $fopen("../assembler/out.jasm", "r");
+	$display("SIMULATION SETUP STARTING\n");
+	$display("Running toolchain...\n");
 
-	if(file == 0)
+	//$system("python ../assembler/generator.py random ../assembler/programs/gen.jasm");
+	$system("python ../assembler/assembler.py ../assembler/programs/gen.jasm ../assembler/programs/out");
+	$system("python ../assembler/disassembler.py ../assembler/programs/out ../assembler/programs/dis.jasm");
+
+	$display("Toolchain complete. Processing binary file...\n");
+
+	binary_file = $fopen("../assembler/programs/out", "rb");
+	if(binary_file == 0)
 	begin
-		$display("Error opening file");
-		$stop;
+		throw_fatal_error("Error opening binary file", -1);
 	end
 
-	while(!$feof(file))
+	while(1)
 	begin
-		void'($fgets(line, file));
-		$display("%s", line);
+		/*
+		 Read binary file byte by byte and alternate between 
+		 writing to high and low field of memory
+		*/
+		$fread(file_byte, binary_file);
+		if($feof(binary_file))
+		begin
+			break;
+		end
+
+		if(is_high_byte == 1)
+		begin
+			is_high_byte = 0;
+			mock_mem[mem_addr][15:8] = file_byte;
+		end
+		else
+		begin
+			is_high_byte = 1;
+			mock_mem[mem_addr][7:0] = file_byte;
+			mem_addr += 1;
+		end
+	end
+
+	$fclose(binary_file);
+
+	if(mem_addr == 0)
+	begin
+		throw_fatal_error("Binary file has less than 2 bytes", -1);
+	end
+	else
+	if(is_high_byte != 1)
+	begin
+		throw_fatal_error("Binary file has an odd number of bytes", -1);
+	end
+
+	// Fill the rest of memory with 0
+	for( ;mem_addr < MEM_SIZE;mem_addr ++)
+	begin
+		mock_mem[mem_addr] = 16'b0;
+	end
+
+	$display("Processing binary file complete. Processing symbol file...\n");
+
+	mem_addr = 0;
+	symbol_file = $fopen("../assembler/programs/dis.jasm", "r");
+	if(symbol_file == 0)
+	begin
+		throw_fatal_error("Error opening symbol file", -1);
+	end
+
+	while(1)
+	begin
+		/*
+		 Read the disassembly so we can use that for checking instruction
+		 behavior instead of having to write a new disassembler here
+		*/
+		void'($fgets(line, symbol_file));
+		if($feof(symbol_file))
+		begin
+			break;
+		end
 
 		if(line.len() == 0)
 		begin
 			continue;
 		end
 
-		line = strip_leading_whitespace(line);
-
-		if(is_comment(line) == 1)
+		arg = get_cmd(line, line);
+		if(arg != "")
 		begin
-			continue;
+			instr_list[mem_addr].cmd = arg;
 		end
-
-		cmd = get_cmd(line, line);
+		else
+		begin
+			throw_fatal_error("Missing command", mem_addr);
+		end
 
 		line = strip_all_whitespace(line);
 
-		if(cmd.len() == 0 || line.len() == 0)
+		arg = get_next_arg(line, line);
+		if(arg != "")
 		begin
-			$display("Syntax error @line %d", i);
-			$stop;
-		end
-
-		op_1 = 0;
-		op_2 = 0;
-
-		if(cmd == "LLI")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = reg_decode(arg_1, status);
-			if(status == 0)
+			op = const_decode(arg, status);
+			instr_list[mem_addr].op_1 = op;
+			arg = get_next_arg(line, line);
+			if(arg != "")
 			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
+				op = const_decode(arg, status);
+				instr_list[mem_addr].op_2 = op;
 			end
-
-			arg_2 = get_next_arg(line, line);
-			op_2 = const_decode(arg_2, status);
-			if(status == 0)
-			begin
-				$display("Arg2 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {4'b0110, 8'(op_2), 4'(op_1)};
-		end
-		else
-		if(cmd == "LUI")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = reg_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			arg_2 = get_next_arg(line, line);
-			op_2 = const_decode(arg_2, status);
-			if(status == 0)
-			begin
-				$display("Arg2 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {4'b0111, 8'(op_2), 4'(op_1)};
-		end
-		else
-		if(cmd == "LDD")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = reg_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			arg_2 = get_next_arg(line, line);
-			op_2 = const_decode(arg_2, status);
-			if(status == 0)
-			begin
-				$display("Arg2 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {3'b000, 9'(op_2), 4'(op_1)};
-		end
-		else
-		if(cmd == "LDN")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = reg_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			arg_2 = get_next_arg(line, line);
-			op_2 = reg_decode(arg_2, status);
-			if(status == 0)
-			begin
-				$display("Arg2 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {3'b111, 5'b10000, 4'(op_2), 4'(op_1)};
-		end
-		else
-		if(cmd == "STD")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = const_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			arg_2 = get_next_arg(line, line);
-			op_2 = reg_decode(arg_2, status);
-			if(status == 0)
-			begin
-				$display("Arg2 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {3'b010, 9'(op_1), 4'(op_2)};
-		end
-		else
-		if(cmd == "STI")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = reg_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			arg_2 = get_next_arg(line, line);
-			op_2 = reg_decode(arg_2, status);
-			if(status == 0)
-			begin
-				$display("Arg2 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {3'b111, 5'b10001, 4'(op_1), 4'(op_2)};
-		end
-		else
-		if(cmd == "J")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = const_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {3'b001, 13'(op_1)};
-		end
-		else
-		if(cmd == "BEQ")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = const_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {5'b10000, 11'(op_1)};
-		end
-		else
-		if(cmd == "BNE")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = const_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {5'b10001, 11'(op_1)};
-		end
-		else
-		if(cmd == "BLT")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = const_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {5'b10010, 11'(op_1)};
-		end
-		else
-		if(cmd == "BGT")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = const_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {5'b10011, 11'(op_1)};
-		end
-		else
-		if(cmd == "ADD")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = reg_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			arg_2 = get_next_arg(line, line);
-			op_2 = reg_decode(arg_2, status);
-			if(status == 0)
-			begin
-				$display("Arg2 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {3'b111, 5'b00000, 4'(op_2), 4'(op_1)};
-		end
-		else
-		if(cmd == "SUB")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = reg_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			arg_2 = get_next_arg(line, line);
-			op_2 = reg_decode(arg_2, status);
-			if(status == 0)
-			begin
-				$display("Arg2 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {3'b111, 5'b00001, 4'(op_2), 4'(op_1)};
-		end
-		else
-		if(cmd == "MUL")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = reg_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			arg_2 = get_next_arg(line, line);
-			op_2 = reg_decode(arg_2, status);
-			if(status == 0)
-			begin
-				$display("Arg2 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {3'b111, 5'b00010, 4'(op_2), 4'(op_1)};
-		end
-		else
-		if(cmd == "AND")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = reg_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			arg_2 = get_next_arg(line, line);
-			op_2 = reg_decode(arg_2, status);
-			if(status == 0)
-			begin
-				$display("Arg2 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {3'b111, 5'b00011, 4'(op_2), 4'(op_1)};
-		end
-		else
-		if(cmd == "OR")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = reg_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			arg_2 = get_next_arg(line, line);
-			op_2 = reg_decode(arg_2, status);
-			if(status == 0)
-			begin
-				$display("Arg2 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {3'b111, 5'b00100, 4'(op_2), 4'(op_1)};
-		end
-		else
-		if(cmd == "XOR")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = reg_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			arg_2 = get_next_arg(line, line);
-			op_2 = reg_decode(arg_2, status);
-			if(status == 0)
-			begin
-				$display("Arg2 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {3'b111, 5'b00101, 4'(op_2), 4'(op_1)};
-		end
-		else
-		if(cmd == "CMP1")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = reg_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {3'b111, 5'b00110, 4'b0, 4'(op_1)};
-		end
-		else
-		if(cmd == "CMP2")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = reg_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {3'b111, 5'b00111, 4'b0, 4'(op_1)};
-		end
-		else
-		if(cmd == "CPP")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = reg_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			arg_2 = get_next_arg(line, line);
-			op_2 = reg_decode(arg_2, status);
-			if(status == 0)
-			begin
-				$display("Arg2 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {3'b111, 5'b01000, 4'(op_2), 4'(op_1)};
-		end
-		else
-		if(cmd == "MOV")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = reg_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			arg_2 = get_next_arg(line, line);
-			op_2 = reg_decode(arg_2, status);
-			if(status == 0)
-			begin
-				$display("Arg2 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {3'b111, 5'b10010, 4'(op_2), 4'(op_1)};
-		end
-		else
-		if(cmd == "ADDI")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = reg_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			arg_2 = get_next_arg(line, line);
-			op_2 = const_decode(arg_2, status);
-			if(status == 0)
-			begin
-				$display("Arg2 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {3'b101, 9'(op_2), 4'(op_1)};
-		end
-		else
-		if(cmd == "SUBI")
-		begin
-			arg_1 = get_next_arg(line, line);
-			op_1 = reg_decode(arg_1, status);
-			if(status == 0)
-			begin
-				$display("Arg1 Syntax error @line %d", i);
-				$stop;
-			end
-
-			arg_2 = get_next_arg(line, line);
-			op_2 = const_decode(arg_2, status);
-			if(status == 0)
-			begin
-				$display("Arg2 Syntax error @line %d", i);
-				$stop;
-			end
-
-			sym_mem[i][DATA_WIDTH-1:0] = {3'b110, 9'(op_2), 4'(op_1)};
 		end
 		else
 		begin
-			$display("Unknown instruction @line %d", i);
-			$stop;
+			throw_fatal_error("No arguments provided", mem_addr);
 		end
-			
-		$display("%x", sym_mem[i]);
 
-		instr_list[i].cmd = cmd;
-		instr_list[i].op_1 = op_1;
-		instr_list[i].op_2 = op_2;
-		instr_list[i].addr = i;
+		instr_list[mem_addr].addr = mem_addr;
 
-		i += 1;
+		$display("%x: %s %d %d", 	instr_list[mem_addr].addr, 
+									instr_list[mem_addr].cmd, 
+									instr_list[mem_addr].op_1, 
+									instr_list[mem_addr].op_2);
 
+		mem_addr += 1;
 	end
 
-	$fclose(file);
+	$fclose(symbol_file);
 
-	while(i < MEM_SIZE)
+	if(mem_addr == 0)
 	begin
-		sym_mem[i][DATA_WIDTH-1:0] = i;
-		i += 1;
+		throw_fatal_error("Symbol file has no data", -1);
 	end
 
 	for(i = 0;i < MEM_SIZE;i ++)
 	begin
-		mock_mem[i] = sym_mem[i];
+		if(i == mem_map_init_addresses)
+		begin
+			mem_map_init_values = mock_mem[i];
+		end
+		else
+		begin
+			sym_mem[i] = mock_mem[i];
+		end
 	end
 
 	for(i = 0;i < REG_FILE_SIZE;i ++)
@@ -604,32 +258,23 @@ begin
 		mock_reg[i] = 0;
 	end
 
-	$display("==========\nEnd of file read and mem init\n==========\n");
-
+	$display("Simulation setup complete.\n");
+	$display("STARTING SIMULATION\n");
 end
 
-int instr_index;
-instr_list_t pipe_buf[3];
+int sim_pc;
 instr_list_t test_buf;
-int pending;
-int pending_index;
-int next_check;
 int compare_flags[8];
+int check_valid_plus_load_next;
+int check_valid_plus_invalid_next;
+instr_list_t instr_queue[$];
 
 initial
 begin
 
-	instr_index = 0;
-	pending = 0;
-	pending_index = 0;
-	next_check = 0;
-
-	for(int i = 0;i < 3;i ++)
-	begin
-		pipe_buf[i].cmd = "";
-		pipe_buf[i].op_1 = 0;
-		pipe_buf[i].op_2 = 0;
-	end
+	sim_pc = 0;
+	check_valid_plus_load_next = 0;
+	check_valid_plus_invalid_next = 0;
 
 	for(int i = 0;i < 7; i ++)
 	begin
@@ -639,22 +284,23 @@ begin
 	test_buf.cmd = "";
 	test_buf.op_1 = 0;
 	test_buf.op_2 = 0;
+	test_buf.addr = 0;
 
 end
 
 
 function int mem_compare();
 
-	int ret = 1;
+	automatic int ret = 1;
 
 	for(int i = 0;i < MEM_SIZE;i ++)
 	begin
-		if(i == 256)
+		if(i == mem_map_init_addresses)
 		begin
 			if(mock_mem[i] != TOP.MEM_CTRL.seg_val[15:0])
 			begin
-				//$display("mock != mem @address %d: %x != %x", i, mock_mem[i], TOP.MEM_CTRL.seg_val[15:0]);
-				//ret = 0;
+				$display("mock != mem @address %d: %x != %x", i, mock_mem[i], TOP.MEM_CTRL.seg_val[15:0]);
+				ret = 0;
 			end
 		end
 		else
@@ -677,9 +323,9 @@ function int mem_compare();
 	end
 
 	/*
-	if(instr_index != PROC.pc)
+	if(sim_pc != PROC.pc)
 	begin
-		$display("mock != PC: %x != %x", instr_index, PROC.pc);
+		$display("mock != PC: %x != %x", sim_pc, PROC.pc);
 		ret = 0;
 	end
 	*/
@@ -688,20 +334,33 @@ function int mem_compare();
 
 endfunction
 
+function void empty_queue(instr_list_t input_queue[$]);
+
+	while(input_queue.size() > 0)
+	begin
+		input_queue.pop_front();
+	end
+
+endfunction
+
+
 always @(posedge clk)
 begin
 
-	if(next_check == 1 || (pending == 1 && TOP.CPU.CORE.stage_2_buf[TOP.CPU.CORE.s_2_valid] == 1'b0))
+	if(check_valid_plus_load_next == 1'b1 || (check_valid_plus_invalid_next == 1'b1 && TOP.CPU.CORE.stage_2_buf[TOP.CPU.CORE.s_2_valid] == 1'b0))
 	begin
-		next_check = 0;
-
-		if(TOP.CPU.CORE.stage_2_buf[TOP.CPU.CORE.s_2_valid] == 1'b0)
+		// sanity check the queue size
+		if(instr_queue.size() < 1)
 		begin
-			test_buf = pipe_buf[2];
-			pending = 0;
+			throw_fatal_error("Empty queue with instruction complete signal", -1);
 		end
 
-		$display("RUNNING: %s", test_buf.cmd);
+		check_valid_plus_load_next = 0;
+		check_valid_plus_invalid_next = 0;
+
+		
+		test_buf = instr_queue.pop_front();
+		$display("%x: %s %d, %d", test_buf.addr, test_buf.cmd, test_buf.op_1, test_buf.op_2);
 
 		if(test_buf.cmd == "LLI")
 		begin
@@ -735,14 +394,18 @@ begin
 		else
 		if(test_buf.cmd == "J")
 		begin
-			instr_index = test_buf.addr + test_buf.op_1;
+			sim_pc = test_buf.addr + test_buf.op_1;
+			// Clear queue
+			while(instr_queue.size() > 0) instr_queue.pop_front(); // TODO: Make a function for this
 		end
 		else
 		if(test_buf.cmd == "BEQ")
 		begin
 			if(compare_flags[0] == 1)
 			begin
-				instr_index = test_buf.addr + test_buf.op_1;
+				sim_pc = test_buf.addr + test_buf.op_1;
+				// Clear queue
+				while(instr_queue.size() > 0) instr_queue.pop_front(); // TODO: Make a function for this
 			end
 		end
 		else
@@ -750,7 +413,9 @@ begin
 		begin
 			if(compare_flags[0] == 0)
 			begin
-				instr_index = test_buf.addr + test_buf.op_1;
+				sim_pc = test_buf.addr + test_buf.op_1;
+				// Clear queue
+				while(instr_queue.size() > 0) instr_queue.pop_front(); // TODO: Make a function for this
 			end
 		end
 		else
@@ -758,7 +423,9 @@ begin
 		begin
 			if(compare_flags[1] == 1)
 			begin
-				instr_index = test_buf.addr + test_buf.op_1;
+				sim_pc = test_buf.addr + test_buf.op_1;
+				// Clear queue
+				while(instr_queue.size() > 0) instr_queue.pop_front(); // TODO: Make a function for this
 			end
 		end
 		else
@@ -766,7 +433,9 @@ begin
 		begin
 			if(compare_flags[2] == 1)
 			begin
-				instr_index = test_buf.addr + test_buf.op_1;
+				sim_pc = test_buf.addr + test_buf.op_1;
+				// Clear queue
+				while(instr_queue.size() > 0) instr_queue.pop_front(); // TODO: Make a function for this
 			end
 		end
 		else
@@ -854,47 +523,27 @@ begin
 			$stop;
 		end
 
-		$display("%s %d, %d", pipe_buf[0].cmd, pipe_buf[0].op_1, pipe_buf[0].op_2);
-		$display("%s %d, %d", pipe_buf[1].cmd, pipe_buf[1].op_1, pipe_buf[1].op_2);
-		$display("%s %d, %d\n", pipe_buf[2].cmd, pipe_buf[2].op_1, pipe_buf[2].op_2);
-
 		if(mem_compare() == 0)
 		begin
-			$display("Runtime error @instruction %d: %s %d, %d", pending_index-1, test_buf.cmd, test_buf.op_1, test_buf.op_2);
+			$display("Runtime error @ %d: %s %d, %d", test_buf.addr, test_buf.cmd, test_buf.op_1, test_buf.op_2);
 			$stop;
 		end
 	end
 
-	if(TOP.CPU.CORE.load_2 == 1'b1)
+	if(TOP.CPU.CORE.stage_2_buf[TOP.CPU.CORE.s_2_valid] == 1'b1 && TOP.CPU.CORE.load_2 == 1'b1)
 	begin
-		if(pending == 1)
-		begin
-			next_check = 1;
-			test_buf = pipe_buf[2];
-		end
-		else
-		begin
-			next_check = 0;
-		end
-		pipe_buf[2] = pipe_buf[1];
-		pending = 1;
-		pending_index ++;
+		check_valid_plus_load_next = 1;
 	end
-	else 
-	if(TOP.CPU.CORE.stage_2_buf[TOP.CPU.CORE.s_2_valid] == 1'b0)
+	else
+	if(TOP.CPU.CORE.stage_2_buf[TOP.CPU.CORE.s_2_valid] == 1'b1)
 	begin
-		pending = 0;
+		check_valid_plus_invalid_next = 1;
 	end
 
-	if(TOP.CPU.CORE.load_1 == 1'b1)
-	begin
-		pipe_buf[1] = pipe_buf[0];
-	end
-	
 	if(TOP.CPU.CORE.load_0 == 1'b1)
 	begin
-		pipe_buf[0] = instr_list[instr_index];
-		instr_index ++;
+		instr_queue.push_back(instr_list[sim_pc]);
+		sim_pc ++;
 	end
 
 end

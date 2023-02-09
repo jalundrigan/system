@@ -1,18 +1,42 @@
 function string get_next_arg(string line, output string remainder);
 
+	if(line.len() == 0 || line.getc(0) == ",")
+	begin
+		remainder = "";
+		return "";
+	end
+
 	for(int i = 0;i < line.len();i ++)
 	begin
 		if(line.getc(i) == ",")
 		begin
-			if(i == 0 || i == line.len()-1)
-			begin
-				remainder = "";
-				return "";
-			end
 			remainder = line.substr(i+1, line.len()-1);
-			return line.substr(0, i-1);
+			if(line.getc(0) == "$")
+			begin
+				// Strip the dollar sign. This will break legacy simulation.
+				return line.substr(1, i-1);
+			end
+			else
+			begin
+				return line.substr(0, i-1);
+			end
+		end
+		else
+		if(i == line.len() - 1)
+		begin
+			remainder = "";
+			if(line.getc(0) == "$")
+			begin
+				// Strip the dollar sign. This will break legacy simulation.
+				return line.substr(1, i);
+			end
+			else
+			begin
+				return line.substr(0, i);
+			end
 		end
 	end
+
 	remainder = "";
 	return line.substr(0, line.len()-1);
 
@@ -204,5 +228,18 @@ function int is_comment(string line);
 	end
 
 	return 0;
+
+endfunction
+
+
+function void throw_fatal_error(string hint, int optional_line_num);
+
+	$display("!!! FATAL SIMULATION ERROR !!!");
+	if(optional_line_num >= 0)
+	begin
+		$display("@ line %d", optional_line_num);
+	end
+	$display(hint);
+	$stop;
 
 endfunction

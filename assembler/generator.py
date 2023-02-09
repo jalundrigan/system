@@ -17,7 +17,8 @@ def generate_random(write_file):
 
     isa_list = list(isa)
 
-    for i in range(instr_apert_low, instr_apert_high + 1):
+    i = instr_apert_low
+    while i <= instr_apert_high:
         instr_name = isa_list[random.randrange(len(isa_list))]
 
         if instr_name == 'STI' or (instr_name == 'STD' and data_apert_low >= 2**9):
@@ -43,7 +44,6 @@ def generate_random(write_file):
                     jump_high = min(instr_apert_high - i, 2**(arg['WIDTH'] - 1) - 1)
                     new_arg = str(random.randrange(jump_low, jump_high + 1))
                 else:
-                    # should prob also generate some negatives
                     new_arg = str(random.randrange(2**arg['WIDTH']))
 
             args_list[arg['ASM_INDEX']] = new_arg
@@ -53,8 +53,10 @@ def generate_random(write_file):
                 instr += arg + ', '
 
         write_file.write(instr[:-2] + '\n')
+        i += 1
 
-    write_file.write('J ' + str(random.randrange(-2**(isa['J']['ARGS'][0]['WIDTH'] - 1), 0)) + '\n')
+    jump_low = max(instr_apert_low - instr_apert_high, -2**(isa['J']['ARGS'][0]['WIDTH'] - 1))
+    write_file.write('J ' + str(random.randrange(jump_low, 0)) + '\n')
 
 
 def generate_program(write_file_name, program_type):    

@@ -25,7 +25,9 @@ module top
 
 `ifdef SIMULATION
    ,
-   input logic cpu_enable
+   input logic cpu_enable,
+   input logic [15:0] mem_map_init_addresses,
+   input logic [15:0] mem_map_init_values
 `endif
 );
 
@@ -211,6 +213,12 @@ mem_cntrl  #(
                 ,
                 .seg_sel(seg_sel),
                 .seg_data(seg_data)
+`endif
+
+`ifdef SIMULATION
+               ,
+               .mem_map_init_addresses(mem_map_init_addresses),
+               .mem_map_init_values(mem_map_init_values)
 `endif
             );
 

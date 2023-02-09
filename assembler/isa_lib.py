@@ -300,13 +300,13 @@ isa = {
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 0,
+                                'ASM_INDEX' : 1,
                                 'SIGNED' : False
                             },
                             {
                                 'TYPE' : 'REG',
                                 'WIDTH' : REG_WIDTH,
-                                'ASM_INDEX' : 1,
+                                'ASM_INDEX' : 0,
                                 'SIGNED' : False
                             }
                          ]   
