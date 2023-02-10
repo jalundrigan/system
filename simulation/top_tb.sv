@@ -114,7 +114,7 @@ begin
 	$display("SIMULATION SETUP STARTING\n");
 	$display("Running toolchain...\n");
 
-	//$system("python ../assembler/generator.py random ../assembler/programs/gen.jasm");
+	$system("python ../assembler/generator.py random ../assembler/programs/gen.jasm");
 	$system("python ../assembler/assembler.py ../assembler/programs/gen.jasm ../assembler/programs/out");
 	$system("python ../assembler/disassembler.py ../assembler/programs/out ../assembler/programs/dis.jasm");
 
@@ -246,6 +246,7 @@ begin
 		if(i == mem_map_init_addresses)
 		begin
 			mem_map_init_values = mock_mem[i];
+			$display("Init mem_map: %x", mem_map_init_values);
 		end
 		else
 		begin
@@ -360,7 +361,7 @@ begin
 
 		
 		test_buf = instr_queue.pop_front();
-		$display("%x: %s %d, %d", test_buf.addr, test_buf.cmd, test_buf.op_1, test_buf.op_2);
+		$display("%x: %s %d, %d          | %x", test_buf.addr, test_buf.cmd, test_buf.op_1, test_buf.op_2, test_buf.addr == mem_map_init_addresses ? TOP.MEM_CTRL.seg_val[15:0] : mock_mem[test_buf.addr]);
 
 		if(test_buf.cmd == "LLI")
 		begin

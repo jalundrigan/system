@@ -136,7 +136,6 @@ segment_driver SEG
 logic read_io;
 logic write_io;
 logic io_request;
-logic last_mem_rdy;
 logic [15:0] seg_val_mapped_address;
 
 always_comb 
@@ -147,7 +146,7 @@ begin
   read_io <= 1'b0;
   write_io <= 1'b0;
 
-  if( (mem_rdy == 1'b1 || last_mem_rdy == 1'b1) && mem_addr == seg_val_mapped_address )
+  if(mem_rdy == 1'b1 && mem_addr == seg_val_mapped_address)
   begin
     if(mem_r_en == 1'b1)
     begin
@@ -180,7 +179,6 @@ begin
     
   if(rst == 1'b1)
   begin
-    last_mem_rdy <= 1'b0;
 
 `ifdef SIMULATION
     seg_val_mapped_address <= mem_map_init_addresses;
@@ -198,7 +196,6 @@ begin
   else
   begin
     io_request <= 1'b0;
-    last_mem_rdy <= mem_rdy;
 
     if(read_io == 1'b1)
     begin

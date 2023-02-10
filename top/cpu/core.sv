@@ -394,8 +394,7 @@ assign load_2 = (
                     stage_1_buf[s_1_valid] == 1'b1 && pc_branch == 1'b0 &&
                     (
                         (state == MEM && mem_cplt == 1'b1) ||
-                        (stage_2_buf[s_2_valid] == 1'b1 && stage_2_buf[s_2_branch] == 1'b1 && mem_rdy == 1'b1) || // TODO: This line is redundant as it cant happen with pc_branch == 1'b0
-                        (stage_2_buf[s_2_valid] == 1'b1 && stage_2_buf[s_2_branch] == 1'b0 &&  stage_2_buf[s_2_mem_r_en] == 1'b0 && stage_2_buf[s_2_mem_w_en] == 1'b0) ||
+                        (stage_2_buf[s_2_valid] == 1'b1 && stage_2_buf[s_2_branch] == 1'b0 && stage_2_buf[s_2_mem_r_en] == 1'b0 && stage_2_buf[s_2_mem_w_en] == 1'b0) ||
                         stage_2_buf[s_2_valid] == 1'b0
                     )
                 ) ? 1'b1 : 1'b0;

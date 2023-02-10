@@ -22,6 +22,9 @@ add wave -position insertpoint -radix hex \
 sim:/top_tb/TOP/CPU/REG/reg_file
 
 add wave -position insertpoint -radix hex \
+sim:/top_tb/TOP/MEM_CTRL/*
+
+add wave -position insertpoint -radix hex \
 sim:/top_tb/TOP/MEM_CTRL/MEM_DRV/*
 
 run 100ms
