@@ -67,22 +67,6 @@ top TOP
 
 assign uart_rx = 1'b1;
 
-always 
-begin
-    clk = ~clk; 
-    #1;
-end
-
-
-initial
-begin
-    clk <= 1'b0;
-    rst <= 1'b1;
-    #2;
-    rst <= 1'b0;
-end
-
-
 typedef struct
 {
 	string cmd;
@@ -95,8 +79,7 @@ instr_list_t instr_list[MEM_SIZE];
 logic[MEM_SIZE-1:0][DATA_WIDTH-1:0] mock_mem;
 logic[REG_FILE_SIZE-1:0][DATA_WIDTH-1:0] mock_reg;
 
-initial
-begin
+function void init_program();
 
 	automatic int binary_file;
 	automatic int symbol_file;
@@ -261,7 +244,8 @@ begin
 
 	$display("Simulation setup complete.\n");
 	$display("STARTING SIMULATION\n");
-end
+
+endfunction
 
 int sim_pc;
 instr_list_t test_buf;
@@ -270,8 +254,7 @@ int check_valid_plus_load_next;
 int check_valid_plus_invalid_next;
 instr_list_t instr_queue[$];
 
-initial
-begin
+function void init_tb();
 
 	sim_pc = 0;
 	check_valid_plus_load_next = 0;
@@ -287,7 +270,7 @@ begin
 	test_buf.op_2 = 0;
 	test_buf.addr = 0;
 
-end
+endfunction
 
 
 function int mem_compare();
@@ -550,26 +533,10 @@ begin
 end
 
 
+// Bypass system init module
 assign cpu_enable = 1'b1;
 
-/* In case we want to enable the CPU at a later time
-always_ff @(posedge clk or posedge rst)
-begin
-
-	if(rst == 1'b1)
-	begin
-		cpu_enable <= 1'b0;
-	end
-	else
-	begin
-		if(TOP.mem_rdy == 1'b1)
-		begin
-			cpu_enable <= 1'b1;
-		end
-	end
-end
-*/
-
+// Simulate DRAM
 always @(posedge clk)
 begin
 
@@ -584,15 +551,56 @@ assign sdram_dq = 	TOP.MEM_CTRL.MEM_DRV.state == TOP.MEM_CTRL.MEM_DRV.MEM_READ &
 					TOP.MEM_CTRL.MEM_DRV.timer == 16'd4
 					? sym_mem[TOP.MEM_CTRL.MEM_DRV.mem_addr_buf] : ($bits(sdram_dq))'('bz);
 
-/*
+
+
+int clk_count;
+int iter_count;
+
+initial
+begin
+	init_program();
+	init_tb();
+	clk_count = 0;
+	iter_count = 1;
+
+	clk <= 1'b0;
+    rst <= 1'b1;
+    #2;
+    rst <= 1'b0;
+end
+
+always 
+begin
+    clk = ~clk; 
+    #1;
+end
+
 always @(posedge clk)
 begin
-	if(TOP.CPU.CORE.mem_cplt == 1'b1 && TOP.CPU.CORE.mem_rdy == 1'b0)
+
+	clk_count ++;
+	if(clk_count == 1000000)
 	begin
-		$display("mem_cplt vs mem_rdy error");
-		$stop;
+		rst <= 1'b1;
+
+		iter_count ++;
+
+		$display("\n\n
+=======================================================================================================
+                                        STARTING RUN #%d
+=======================================================================================================
+\n\n", iter_count);
+
+		init_program();
+		init_tb();
+		clk_count = 0;
+		while(instr_queue.size() > 0) instr_queue.pop_front(); // TODO: Make a function for this
+
+		#1;
+		rst <= 1'b0;
+
 	end
+
 end
-*/
 
 endmodule
