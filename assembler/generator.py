@@ -17,12 +17,27 @@ def generate_random(write_file):
 
     isa_list = list(isa)
 
+    # keep track of where we put STI and J/BEQ/BNE/BLT/BGT instructions
+    sti_list = []
+    j_list = []
+
     i = instr_apert_low
     while i <= instr_apert_high:
         instr_name = isa_list[random.randrange(len(isa_list))]
 
-        if instr_name == 'STI' or (instr_name == 'STD' and data_apert_low >= 2**9):
+        if i == instr_apert_high:
+            # final instruction is a jump
+            instr_name = 'J'
+        elif instr_name == 'STD' and data_apert_low >= 2**9:
             # store direct cannot access the data aperture due to 9 bit limit
+            continue
+        elif instr_name == 'STI' and i >= (instr_apert_high - 4):
+            # not enough space for STI
+            continue
+        elif instr_name == 'STI' and (  (i + 1) in j_list or 
+                                        (i + 2) in j_list or 
+                                        (i + 3) in j_list or 
+                                        (i + 4) in j_list):
             continue
 
         instr = instr_name + ' '
@@ -33,7 +48,24 @@ def generate_random(write_file):
             if arg['TYPE'] == None:
                 continue
             elif arg['TYPE'] == 'REG':
-                new_arg = '$' + str(random.randrange(2**arg['WIDTH']))
+                instr_reg = random.randrange(2**arg['WIDTH'])
+                new_arg = '$' + str(instr_reg)
+                if instr_name == 'STI' and arg['ASM_INDEX'] == 0:
+                    # first argument of STI is destination address, ensure address is in the data aperture
+                    cpp_reg = random.randrange(2**arg['WIDTH'])
+                    while cpp_reg == instr_reg:
+                        cpp_reg = random.randrange(2**arg['WIDTH'])
+                    
+                    write_file.write('LLI ' + '$' + str(cpp_reg) + ' ' + str(data_apert_low & 0xff) + '\n')
+                    write_file.write('LUI ' + '$' + str(cpp_reg) + ' ' + str((data_apert_low >> 8) & 0xff) + '\n')
+                    write_file.write('CPP ' + '$' + str(instr_reg) + ', $' + str(cpp_reg) + '\n')
+                    # skip over STI if destination address is below data aperture low
+                    write_file.write('BLT 2\n')
+                    sti_list.append(i+1)
+                    sti_list.append(i+2)
+                    sti_list.append(i+3)
+                    sti_list.append(i+4)
+                    i += 4
             else:
                 if instr_name == 'STD':
                     # only write in the data aperture and largest value is 2^9-1
@@ -42,9 +74,22 @@ def generate_random(write_file):
                     # don't jump out of the instruction aperture
                     jump_low = max(instr_apert_low - i, -2**(arg['WIDTH'] - 1))
                     jump_high = min(instr_apert_high - i, 2**(arg['WIDTH'] - 1) - 1)
-                    new_arg = str(random.randrange(jump_low, jump_high + 1))
+                    jump_random = random.randrange(jump_low, jump_high + 1)
+                    while (i + jump_random) in sti_list:
+                        jump_random = random.randrange(jump_low, jump_high + 1)
+                    j_list.append(i + jump_random)
+                    new_arg = str(jump_random)
                 else:
-                    new_arg = str(random.randrange(2**arg['WIDTH']))
+                    choice_2 = random.randrange(3)
+                    if choice_2 == 0:
+                        new_arg = str(random.randrange(2**arg['WIDTH']))
+                    elif choice_2 == 1:
+                        new_arg = hex(random.randrange(2**arg['WIDTH']))
+                    elif choice_2 == 2:
+                        new_arg = bin(random.randrange(2**arg['WIDTH']))
+                    else:
+                        print('Fatal error choice_2')
+                        exit(1)
 
             args_list[arg['ASM_INDEX']] = new_arg
 
@@ -54,9 +99,6 @@ def generate_random(write_file):
 
         write_file.write(instr[:-2] + '\n')
         i += 1
-
-    jump_low = max(instr_apert_low - instr_apert_high, -2**(isa['J']['ARGS'][0]['WIDTH'] - 1))
-    write_file.write('J ' + str(random.randrange(jump_low, 0)) + '\n')
 
 
 def generate_program(write_file_name, program_type):    

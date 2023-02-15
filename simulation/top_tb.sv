@@ -579,7 +579,7 @@ always @(posedge clk)
 begin
 
 	clk_count ++;
-	if(clk_count == 1000000)
+	if(clk_count == 20000)
 	begin
 		rst <= 1'b1;
 
@@ -598,9 +598,8 @@ begin
 
 		#1;
 		rst <= 1'b0;
-
 	end
-
+	
 end
 
 endmodule

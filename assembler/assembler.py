@@ -62,8 +62,18 @@ def assemble(write_file_name, instr_list):
                             throw_syntax_error(instr, instr_num, 'Expecting register')
                         instr_arg = instr_arg[1:]
                     
+                    # try to convert the argument to an int with a few different bases
+                    try:
+                        instr_arg = int(instr_arg)
+                    except ValueError:
+                        try:
+                            instr_arg = int(instr_arg, 2)
+                        except ValueError:
+                            try:
+                                instr_arg = int(instr_arg, 16)
+                            except ValueError:
+                                throw_syntax_error(instr, instr_num, 'Expected a number in base 2, 10, or 16')
 
-                    instr_arg = int(instr_arg)
                     if (isa_arg['SIGNED'] == False) and (instr_arg > 2**(isa_arg['WIDTH']) - 1):
                         throw_syntax_error(instr, instr_num, 'Unsigned argument out of bounds (too large)')
                     elif (isa_arg['SIGNED'] == False) and (instr_arg < 0):
@@ -89,7 +99,7 @@ def assemble(write_file_name, instr_list):
                 throw_syntax_error(instr, instr_num, 'Unknown instruction')
             
             except ValueError:
-                throw_syntax_error(instr, instr_num, 'Expecting number')
+                throw_syntax_error(instr, instr_num, 'Fatal write arg')
 
 
 if __name__ == "__main__":
