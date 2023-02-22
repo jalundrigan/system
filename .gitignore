@@ -10,3 +10,4 @@ simulation/modelsim.ini
 simulation/vlog.opt
 simulation/vsim.wlf
 top/cpu/core.sv.bak
+assembler/programs/tester.out

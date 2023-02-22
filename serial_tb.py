@@ -3,36 +3,35 @@ import time
 import random
 
 def write_memory(address, value):
-    ser.write(WRITE_CMD.to_bytes(1, 'little'))
-    ser.write(address.to_bytes(3, 'little'))
-    ser.write(value.to_bytes(2, 'little'))
+    ser.write(WRITE_CMD.to_bytes(1, 'big'))
+    ser.write(address.to_bytes(3, 'big'))
+    ser.write(value.to_bytes(2, 'big'))
     ser.flush()
     return ser.read(1)
 
-def write_memory_in_bytes(address, low, high):
-    ser.write(WRITE_CMD.to_bytes(1, 'little'))
-    ser.write(address.to_bytes(3, 'little'))
-    ser.write(low.to_bytes(1, 'little'))
-    ser.write(high.to_bytes(1, 'little'))
+def write_memory_in_bytes(address, byte_1, byte_2):
+    ser.write(WRITE_CMD.to_bytes(1, 'big'))
+    ser.write(address.to_bytes(3, 'big'))
+    ser.write(byte_1.to_bytes(1, 'big'))
+    ser.write(byte_2.to_bytes(1, 'big'))
     ser.flush()
     return ser.read(1)
 
 def read_memory(address):
-    ser.write(READ_CMD.to_bytes(1, 'little'))
-    ser.write(address.to_bytes(3, 'little'))
+    ser.write(READ_CMD.to_bytes(1, 'big'))
+    ser.write(address.to_bytes(3, 'big'))
     ser.flush()
     return ser.read(2)
 
 def send_stop_init_cmd():
-    ser.write(STOP_INIT.to_bytes(1, 'little'))
+    ser.write(STOP_INIT.to_bytes(1, 'big'))
     ser.flush()
     return ser.read(1)
 
 def check_write_ack(ack_val):
     if ack_val != ACK_CMD:
         print('Bad ACK value: ', ack_val)
-        while True:
-            pass
+        exit(1)
 
 
 def random_test():
@@ -64,15 +63,14 @@ def random_test():
 
         for i in range(list_size - 1, -1, -1):
             read_val = read_memory(write_list[i][0])
-            read_val_int = int.from_bytes(read_val, 'little')
+            read_val_int = int.from_bytes(read_val, 'big')
             if read_val_int != write_list[i][1]:
                 print('RAND Error')
                 print(read_val_int)
                 print(write_list[i][1])
                 print(i)
                 print(write_list)
-                while True:
-                    pass
+                exit(1)
 
 
 def manual_test():
@@ -86,14 +84,14 @@ def manual_test():
 
         for i in range(max(0, address - 5), min(2**24 - 1, address+5)):
             read_val = read_memory(i)
-            print('%6d'% (i), '                   ', int.from_bytes(read_val, 'little'))
+            print('%6d'% (i), '                   ', int.from_bytes(read_val, 'big'))
 
         read_ack = write_memory(address, value)
         print('ACK back: ' + str(read_ack))
 
         for i in range(max(0, address - 5), min(2**24 - 1, address+5)):
             read_val = read_memory(i)
-            print('%6d'% (i), '                   ', int.from_bytes(read_val, 'little'))
+            print('%6d'% (i), '                   ', int.from_bytes(read_val, 'big'))
 
 
 def scan_test():
@@ -123,13 +121,12 @@ def scan_test():
     for address in range(0, addr_lim, step_size):
         expected = (address + 1) % 65536
         val = read_memory(address)
-        print('R - %6.6x      %5d' % (address, int.from_bytes(val, 'little')))
+        print('R - %6.6x      %5d' % (address, int.from_bytes(val, 'big')))
 
-        if val != expected.to_bytes(2, 'little'):
+        if val != expected.to_bytes(2, 'big'):
             print('READ Error')
             print(val)
-            while True:
-                pass
+            exit(1)
 
     print('READ COMPLETE')
     print('Press ENTER to continue\n\n')
@@ -142,7 +139,7 @@ def send_program():
 
     #print('Enter file name')
     #file_name = input()
-    file_name = './assembler/out'
+    file_name = './assembler/programs/tester.out'
     write_vals = []
 
     print('Preparing to open file')
@@ -158,36 +155,36 @@ def send_program():
         mem_address = 0
         byte_index = 0
         while byte_index < len(file_data):
-            low_byte = file_data[byte_index]
-            high_byte = file_data[byte_index + 5]
-            print(hex(low_byte), ',', end='')
-            print(hex(high_byte))
-            check_write_ack(write_memory_in_bytes(mem_address, low_byte, high_byte))
-            write_vals.append([low_byte, high_byte])
+            high_byte = file_data[byte_index]
+            low_byte = file_data[byte_index + 1]
+            print(hex(high_byte) + ',' + hex(low_byte))
+            check_write_ack(write_memory_in_bytes(mem_address, high_byte, low_byte))
+            write_vals.append([high_byte, low_byte])
 
             mem_address += 1
-            byte_index += 10
+            byte_index += 2
 
     print('Beginning memory read')
 
     for i in range(len(write_vals)):
-        expected_low = write_vals[i][0]
-        expected_high = write_vals[i][1]
+        expected_high = write_vals[i][0]
+        expected_low = write_vals[i][1]
 
         read_bytes = list(read_memory(i))
-        read_low = read_bytes[0]
-        read_high = read_bytes[1]
+        read_high = read_bytes[0]
+        read_low = read_bytes[1]
 
-        if(read_low != expected_low or read_high != expected_high):
+        print(hex(read_high) + ',' + hex(read_low))
+
+        if(read_high != expected_high or read_low != expected_low):
             print('SEND PROGRAM Error')
             print('Expected:')
-            print(expected_low)
             print(expected_high)
+            print(expected_low)
             print('Read:')
-            print(read_low)
             print(read_high)
-            while True:
-                pass
+            print(read_low)
+            exit(1)
     
     print('Ending init sequence')
 

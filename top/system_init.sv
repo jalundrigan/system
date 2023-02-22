@@ -54,14 +54,37 @@ enum logic [3:0] {
 
 logic [15:0] read_buff;
 
+
+always_comb
+begin
+   
+   if(state == WRITE_MEM && mem_rdy == 1'b1)
+   begin
+      mem_w_en <= 1'b1;
+   end
+   else
+   begin
+      mem_w_en <= 1'b0;
+   end
+
+   if(state == READ_MEM_1 && mem_rdy == 1'b1)
+   begin
+      mem_r_en <= 1'b1;
+   end
+   else
+   begin
+      mem_r_en <= 1'b0;
+   end
+
+end
+
+
 always_ff @(posedge clk or negedge rst_n)
 begin
    if(rst_n == 1'b0)
    begin
       led <= 4'b0000;
       serial_out_en <= 1'b0;
-      mem_w_en <= 1'b0;
-      mem_r_en <= 1'b0;
       state <= COMMAND;
       cmd_state <= FIRST_BYTE;
       cpu_enable <= 1'b0;
@@ -109,7 +132,7 @@ begin
             else
             if(cmd_state == BYTE_ADDRESS_W_1)
             begin
-               mem_addr[7:0] <= serial_data_in;
+               mem_addr[23:16] <= serial_data_in;
                cmd_state <= BYTE_ADDRESS_W_2;
             end
             else
@@ -121,19 +144,19 @@ begin
             else
             if(cmd_state == BYTE_ADDRESS_W_3)
             begin
-               mem_addr[23:16] <= serial_data_in;
+               mem_addr[7:0] <= serial_data_in;
                cmd_state <= BYTE_DATA_W_1;
             end
             else
             if(cmd_state == BYTE_DATA_W_1)
             begin
-               mem_data_in[7:0] <= serial_data_in;
+               mem_data_in[15:8] <= serial_data_in;
                cmd_state <= BYTE_DATA_W_2;
             end
             else
             if(cmd_state == BYTE_DATA_W_2)
             begin
-               mem_data_in[15:8] <= serial_data_in;
+               mem_data_in[7:0] <= serial_data_in;
                cmd_state <= FIRST_BYTE;
                state <= WRITE_MEM;
             end
@@ -141,7 +164,7 @@ begin
             else
             if(cmd_state == BYTE_ADDRESS_R_1)
             begin
-               mem_addr[7:0] <= serial_data_in;
+               mem_addr[23:16] <= serial_data_in;
                cmd_state <= BYTE_ADDRESS_R_2;
             end
             else
@@ -153,7 +176,7 @@ begin
             else
             if(cmd_state == BYTE_ADDRESS_R_3)
             begin
-               mem_addr[23:16] <= serial_data_in;
+               mem_addr[7:0] <= serial_data_in;
                cmd_state <= FIRST_BYTE;
                state <= READ_MEM_1;
             end
@@ -165,15 +188,12 @@ begin
       begin
          if(mem_rdy == 1'b1)
          begin
-            mem_w_en <= 1'b1;
             state <= WRITE_SERIAL_ACK;
          end
       end
       else
       if(state == WRITE_SERIAL_ACK)
       begin
-         mem_w_en <= 1'b0;
-
          if(serial_out_rdy == 1'b1)
          begin
             serial_data_out <= 8'd69;
@@ -187,15 +207,12 @@ begin
       begin
          if(mem_rdy == 1'b1)
          begin
-            mem_r_en <= 1'b1;
             state <= READ_MEM_2;
          end
       end
       else
       if(state == READ_MEM_2)
       begin
-         mem_r_en <= 1'b0;
-
          if(mem_cplt == 1'b1)
          begin
             read_buff <= mem_data_out;
@@ -213,7 +230,7 @@ begin
          else
          if(serial_out_rdy == 1'b1)
          begin
-            serial_data_out <= read_buff[7:0];
+            serial_data_out <= read_buff[15:8];
             serial_out_en <= 1'b1;
          end
       end
@@ -222,7 +239,7 @@ begin
       begin
          if(serial_out_rdy == 1'b1)
          begin
-            serial_data_out <= read_buff[15:8];
+            serial_data_out <= read_buff[7:0];
             serial_out_en <= 1'b1;
             state <= COMMAND;
          end

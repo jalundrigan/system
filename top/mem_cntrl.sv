@@ -183,13 +183,13 @@ begin
 `ifdef SIMULATION
     seg_val_mapped_address <= mem_map_init_addresses;
 `else
-    seg_val_mapped_address <= 16'b0;
+    seg_val_mapped_address <= 16'h100;
 `endif
 
 `ifdef SIMULATION
     seg_val[23:0] <= {8'b0, mem_map_init_values};
 `else
-    seg_val[23:0] <= 24'h000000;
+    seg_val[23:0] <= 24'h00BEEF;
 `endif
 
   end
