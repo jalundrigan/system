@@ -1,5 +1,3 @@
-//`define DISPLAY_PC -- defined in Quartus Verilog Macros
-
 module top
 (
    input logic clk,
