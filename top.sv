@@ -19,7 +19,13 @@ module top
    output logic [7:0] seg_data,
 
    input logic uart_rx,
-   output logic uart_tx
+   output logic uart_tx,
+
+   output logic[4:0] vga_out_r,
+   output logic[5:0] vga_out_g,
+   output logic[4:0] vga_out_b,
+   output logic vga_out_hs,
+   output logic vga_out_vs
 
 `ifdef SIMULATION
    ,
@@ -255,5 +261,17 @@ segment_driver SEG
                 );
 `endif
 
+display_cntrl DISP
+                (
+                  .clk(clk),
+                  .rst(rst | ~cpu_enable),
+
+                  .vga_red(vga_out_r),
+                  .vga_green(vga_out_g),
+                  .vga_blue(vga_out_b),
+
+                  .h_sync(vga_out_hs),
+                  .v_sync(vga_out_vs)
+                );
 
 endmodule
