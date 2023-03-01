@@ -10,10 +10,15 @@ vlog -reportprogress 30 -work work C:/Users/jalun/Desktop/Computer_Proj_IPs/syst
 vlog -reportprogress 30 -work work C:/Users/jalun/Desktop/Computer_Proj_IPs/system/src/top/cpu/reg_file.sv
 vlog -reportprogress 30 -work work C:/Users/jalun/Desktop/Computer_Proj_IPs/system/src/top/mem_cntrl/mem_driver.sv
 vlog -reportprogress 30 -work work C:/Users/jalun/Desktop/Computer_Proj_IPs/system/src/top/mem_cntrl/segment_driver.sv
+vlog -reportprogress 30 -work work C:/Users/jalun/Desktop/Computer_Proj_IPs/system/src/top/display_cntrl/vga_driver.sv
+vlog -reportprogress 30 -work work C:/Users/jalun/Desktop/Computer_Proj_IPs/system/src/top/display_cntrl.sv
 vsim -gui work.top_tb -t ns
 
 add wave -position insertpoint -radix hex \
 sim:/top_tb/*
+
+add wave -position insertpoint -radix hex \
+sim:/top_tb/TOP/DISP/*
 
 add wave -position insertpoint -radix hex \
 sim:/top_tb/TOP/CPU/CORE/*

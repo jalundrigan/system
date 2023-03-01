@@ -1,4 +1,8 @@
 module display_cntrl
+        #(
+            parameter MEM_ADDR_WIDTH,
+            parameter DATA_WIDTH
+        )
         (
             input logic clk,
             input logic rst,
@@ -8,10 +12,30 @@ module display_cntrl
             output logic[4:0] vga_blue,
 
             output logic h_sync,
-            output logic v_sync
+            output logic v_sync,
+
+            output logic[MEM_ADDR_WIDTH-1:0] mem_addr,
+            output logic[DATA_WIDTH-1:0] mem_data_in,
+            output logic mem_r_en,
+            output logic mem_w_en,
+
+            input logic[DATA_WIDTH-1:0] mem_data_out,
+            input logic mem_rdy,
+            input logic mem_cplt
         );
 
 parameter NUM_PIXEL = 640 * 480;
+parameter NUM_PIXEL_MEM_LOC = NUM_PIXEL / 16;
+
+// midway point: 55935
+parameter MEM_TOP = 24'd65535;//(MEM_ADDR_WIDTH)'('d65535);
+parameter MEM_BASE = 24'd46336;//(MEM_ADDR_WIDTH)'(65536 - NUM_PIXEL_MEM_LOC);
+
+enum logic [1:0] {
+                    MEM_READ_START,
+                    MEM_READ_CPLT,
+                    MEM_READ_WAIT
+                 } state;
 
 logic [4:0] pixel_red;
 logic [5:0] pixel_green;
@@ -42,6 +66,93 @@ vga_driver VGA(
                 );
 
 
+logic [DATA_WIDTH-1:0] next_pixel_buf;
+logic [DATA_WIDTH-1:0] this_pixel_buf;
+logic [3:0] this_pixel_count;
+
+
+assign pixel_red = {($bits(pixel_red)){this_pixel_buf[0]}};
+assign pixel_green = {($bits(pixel_green)){this_pixel_buf[0]}};
+assign pixel_blue = {($bits(pixel_blue)){this_pixel_buf[0]}};
+
+assign mem_w_en = 1'b0;
+assign mem_data_in = 16'b0;
+
+always_comb
+begin
+    if(state == MEM_READ_START && mem_rdy == 1'b1)
+    begin
+        mem_r_en <= 1'b1;
+    end
+    else
+    begin
+        mem_r_en <= 1'b0;
+    end
+end
+
+always_ff @(posedge clk or posedge rst)
+begin
+    if(rst == 1'b1)
+    begin
+        vga_enable <= 1'b0;
+        next_pixel_buf <= ($bits(next_pixel_buf))'('b0);
+        this_pixel_buf <= ($bits(this_pixel_buf))'('b0);
+        this_pixel_count <= 4'd0;
+        mem_addr <= MEM_BASE;
+        state <= MEM_READ_START;
+    end
+    else
+    begin
+
+        if(next_pixel == 1'b1 && this_pixel_count < 4'd15)
+        begin
+            this_pixel_count <= this_pixel_count + 4'd1;
+            for(int i = 0;i < 15;i ++)
+            begin
+                this_pixel_buf[i] <= this_pixel_buf[i + 1];
+            end
+        end
+
+        if(state == MEM_READ_START)
+        begin
+            if(mem_rdy == 1'b1)
+            begin
+                state <= MEM_READ_CPLT;
+            end
+        end
+        else
+        if(state == MEM_READ_CPLT)
+        begin
+            if(mem_cplt == 1'b1)
+            begin
+                next_pixel_buf <= mem_data_out;
+                state <= MEM_READ_WAIT;
+            end
+        end
+        else
+        if(state == MEM_READ_WAIT)
+        begin
+            if(vga_enable == 1'b0 || (this_pixel_count == 4'd15 && next_pixel == 1'b1) )
+            begin
+                this_pixel_buf <= next_pixel_buf;
+                this_pixel_count <= 4'd0;
+                vga_enable <= 1'b1;
+                state <= MEM_READ_START;
+                if(mem_addr == MEM_TOP)
+                begin
+                    mem_addr <= MEM_BASE;
+                end
+                else
+                begin
+                    mem_addr <= mem_addr + 24'd1;
+                end
+            end
+        end
+
+    end
+end
+
+/* Handy for simple hard wires images
 always_comb
 begin
 
@@ -110,5 +221,6 @@ begin
         end
     end
 end
+*/
 
 endmodule

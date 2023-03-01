@@ -38,6 +38,10 @@ module core
 `endif
         );
 
+// TODO: MEM_ADDR_WIDTH is defined as 24 bits so we are mixing bit widths???
+
+
+
 /*
     Stage 0 Definitions
 */

@@ -43,29 +43,48 @@ parameter REG_FILE_SIZE = 16;
 logic rst;
 assign rst = ~rst_n;
 
-// Input to memory controller
-logic[MEM_ADDR_WIDTH-1:0] mem_addr;
-logic[DATA_WIDTH-1:0] mem_data_in;
-logic mem_r_en;
-logic mem_w_en;
-
-// Output from memory controller
-logic mem_rdy;
-logic mem_cplt;
-logic[DATA_WIDTH-1:0] mem_data_out;
-
-// MUXed memory controller input from CPU
+// CPU mem lines
 logic[MEM_ADDR_WIDTH-1:0] cpu_mem_addr;
 logic[DATA_WIDTH-1:0] cpu_mem_data_in;
 logic cpu_mem_r_en;
 logic cpu_mem_w_en;
+logic cpu_mem_rdy;
+logic cpu_mem_cplt;
 
-// MUXed memory controller input from INIT
+// System init mem lines
 logic[MEM_ADDR_WIDTH-1:0] init_mem_addr;
 logic[DATA_WIDTH-1:0] init_mem_data_in;
 logic init_mem_r_en;
 logic init_mem_w_en;
+logic init_mem_rdy;
+logic init_mem_cplt;
 
+// Display mem lines
+logic[MEM_ADDR_WIDTH-1:0] disp_mem_addr;
+logic[DATA_WIDTH-1:0] disp_mem_data_in;
+logic disp_mem_r_en;
+logic disp_mem_w_en;
+logic disp_mem_rdy;
+logic disp_mem_cplt;
+
+// Memory high priority
+logic[MEM_ADDR_WIDTH-1:0] p0_mem_addr;
+logic[DATA_WIDTH-1:0] p0_mem_data_in;
+logic p0_mem_r_en;
+logic p0_mem_w_en;
+logic p0_mem_rdy;
+logic p0_mem_cplt;
+
+// Memory controller low priority
+logic[MEM_ADDR_WIDTH-1:0] p1_mem_addr;
+logic[DATA_WIDTH-1:0] p1_mem_data_in;
+logic p1_mem_r_en;
+logic p1_mem_w_en;
+logic p1_mem_rdy;
+logic p1_mem_cplt;
+
+// Shared memory data out
+logic[DATA_WIDTH-1:0] mem_data_out;
 
 /*
    UART serial driver
@@ -124,8 +143,8 @@ system_init #(
                .serial_in_cplt(serial_in_cplt),
                .serial_data_in(serial_data_in),
                .serial_out_rdy(serial_out_rdy),
-               .mem_rdy(mem_rdy),
-               .mem_cplt(mem_cplt),
+               .mem_rdy(init_mem_rdy),
+               .mem_cplt(init_mem_cplt),
 
                .serial_data_out(serial_data_out),
                .serial_out_en(serial_out_en),
@@ -166,8 +185,8 @@ cpu  #(
          .mem_w_en(cpu_mem_w_en),
 
          .mem_data_out(mem_data_out),
-         .mem_rdy(mem_rdy),
-         .mem_cplt(mem_cplt)
+         .mem_rdy(cpu_mem_rdy),
+         .mem_cplt(cpu_mem_cplt)
 
 `ifdef DISPLAY_PC
          ,
@@ -176,10 +195,24 @@ cpu  #(
       );
 
 
-assign mem_addr = cpu_enable == 1'b0 ? init_mem_addr : cpu_mem_addr;
-assign mem_data_in = cpu_enable == 1'b0 ? init_mem_data_in : cpu_mem_data_in;
-assign mem_r_en = cpu_enable == 1'b0 ? init_mem_r_en : cpu_mem_r_en;
-assign mem_w_en = cpu_enable == 1'b0 ? init_mem_w_en : cpu_mem_w_en;
+assign p0_mem_addr      = cpu_enable == 1'b0 ? init_mem_addr : disp_mem_addr;
+assign p0_mem_data_in   = cpu_enable == 1'b0 ? init_mem_data_in : disp_mem_data_in;
+assign p0_mem_r_en      = cpu_enable == 1'b0 ? init_mem_r_en : disp_mem_r_en;
+assign p0_mem_w_en      = cpu_enable == 1'b0 ? init_mem_w_en : disp_mem_w_en;
+
+assign p1_mem_addr      = cpu_mem_addr;
+assign p1_mem_data_in   = cpu_mem_data_in;
+assign p1_mem_r_en      = cpu_mem_r_en;
+assign p1_mem_w_en      = cpu_mem_w_en;
+
+assign init_mem_rdy      = p0_mem_rdy;
+assign init_mem_cplt     = p0_mem_cplt;
+
+assign disp_mem_rdy      = p0_mem_rdy;
+assign disp_mem_cplt     = p0_mem_cplt;
+
+assign cpu_mem_rdy       = p1_mem_rdy;
+assign cpu_mem_cplt      = p1_mem_cplt;
 
 /*
    Memory Controller
@@ -193,13 +226,22 @@ mem_cntrl  #(
                 .clk(clk),
                 .rst(rst),
 
-                .mem_addr(mem_addr),
-                .mem_data_in(mem_data_in),
-                .mem_r_en(mem_r_en),
-                .mem_w_en(mem_w_en),
+                .p0_mem_addr(p0_mem_addr),
+                .p0_mem_data_in(p0_mem_data_in),
+                .p0_mem_r_en(p0_mem_r_en),
+                .p0_mem_w_en(p0_mem_w_en),
 
-                .mem_rdy(mem_rdy),
-                .mem_cplt(mem_cplt),
+                .p0_mem_rdy(p0_mem_rdy),
+                .p0_mem_cplt(p0_mem_cplt),
+
+                .p1_mem_addr(p1_mem_addr),
+                .p1_mem_data_in(p1_mem_data_in),
+                .p1_mem_r_en(p1_mem_r_en),
+                .p1_mem_w_en(p1_mem_w_en),
+
+                .p1_mem_rdy(p1_mem_rdy),
+                .p1_mem_cplt(p1_mem_cplt),
+
                 .mem_data_out(mem_data_out),
 
                 .cke(sdram_cke),
@@ -261,7 +303,11 @@ segment_driver SEG
                 );
 `endif
 
-display_cntrl DISP
+display_cntrl  #(
+                  .MEM_ADDR_WIDTH(MEM_ADDR_WIDTH),
+                  .DATA_WIDTH(DATA_WIDTH)
+                )
+                DISP
                 (
                   .clk(clk),
                   .rst(rst | ~cpu_enable),
@@ -271,7 +317,16 @@ display_cntrl DISP
                   .vga_blue(vga_out_b),
 
                   .h_sync(vga_out_hs),
-                  .v_sync(vga_out_vs)
+                  .v_sync(vga_out_vs),
+
+                  .mem_addr(disp_mem_addr),
+                  .mem_data_in(disp_mem_data_in),
+                  .mem_r_en(disp_mem_r_en),
+                  .mem_w_en(disp_mem_w_en),
+
+                  .mem_data_out(mem_data_out),
+                  .mem_rdy(disp_mem_rdy),
+                  .mem_cplt(disp_mem_cplt)
                 );
 
 endmodule

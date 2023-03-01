@@ -10,13 +10,22 @@ module mem_cntrl
         /*
           Interface to high level blocks
         */
-        input logic[ADDR_WIDTH-1:0] mem_addr,
-        input logic[DATA_WIDTH-1:0] mem_data_in,
-        input logic mem_r_en,
-        input logic mem_w_en,
+        input logic[ADDR_WIDTH-1:0] p0_mem_addr,
+        input logic[DATA_WIDTH-1:0] p0_mem_data_in,
+        input logic p0_mem_r_en,
+        input logic p0_mem_w_en,
 
-        output logic mem_rdy,
-        output logic mem_cplt,
+        output logic p0_mem_rdy,
+        output logic p0_mem_cplt,
+
+        input logic[ADDR_WIDTH-1:0] p1_mem_addr,
+        input logic[DATA_WIDTH-1:0] p1_mem_data_in,
+        input logic p1_mem_r_en,
+        input logic p1_mem_w_en,
+
+        output logic p1_mem_rdy,
+        output logic p1_mem_cplt,
+
         output logic[DATA_WIDTH-1:0] mem_data_out,
 
         /*
@@ -52,6 +61,17 @@ module mem_cntrl
 `endif
       );
 
+enum logic [1:0] {
+                    S_P0,
+                    S_P1
+                 } state;
+
+logic[ADDR_WIDTH-1:0] mem_addr;
+logic[DATA_WIDTH-1:0] mem_data_in;
+logic mem_r_en;
+logic mem_w_en;
+logic mem_rdy;
+logic mem_cplt;
 
 /*
    DRAM Memory driver
@@ -213,5 +233,107 @@ begin
 end
 
 `endif
+
+logic p0_request;
+logic p1_request;
   
+always_comb
+begin
+
+  p0_mem_rdy <= mem_rdy;
+
+  if(p0_request == 1'b1)
+  begin
+    p1_mem_rdy <= 1'b0;
+  end
+  else
+  begin
+    p1_mem_rdy <= mem_rdy;
+  end
+end
+
+always_comb
+begin
+
+  if(state == S_P0)
+  begin
+    p0_mem_cplt <= mem_cplt;
+    p1_mem_cplt <= 1'b0;
+  end
+  else
+  if(state == S_P1)
+  begin
+    p0_mem_cplt <= 1'b0;
+    p1_mem_cplt <= mem_cplt;
+  end
+  else
+  begin
+    // TODO: can be dont care
+    p0_mem_cplt <= 1'b0;
+    p1_mem_cplt <= 1'b0;
+  end
+
+end
+
+always_comb
+begin
+
+  if(mem_rdy == 1'b1 && (p0_mem_r_en == 1'b1 || p0_mem_w_en == 1'b1) )
+  begin
+    p0_request <= 1'b1;
+    p1_request <= 1'b0;
+
+    mem_addr <= p0_mem_addr;
+    mem_data_in <= p0_mem_data_in;
+    mem_r_en <= p0_mem_r_en;
+    mem_w_en <= p0_mem_w_en;
+  end
+  else
+  if(mem_rdy == 1'b1 && (p1_mem_r_en == 1'b1 || p1_mem_w_en == 1'b1) )
+  begin
+    p0_request <= 1'b0;
+    p1_request <= 1'b1;
+
+    mem_addr <= p1_mem_addr;
+    mem_data_in <= p1_mem_data_in;
+    mem_r_en <= p1_mem_r_en;
+    mem_w_en <= p1_mem_w_en;
+  end
+  else
+  begin
+    p0_request <= 1'b0;
+    p1_request <= 1'b0;
+
+    mem_addr <= p0_mem_addr;
+    mem_data_in <= p0_mem_data_in;
+    mem_r_en <= p0_mem_r_en;
+    mem_w_en <= p0_mem_w_en;
+  end
+
+end
+
+always_ff @(posedge clk or posedge rst)
+begin
+    
+  if(rst == 1'b1)
+  begin
+    state <= S_P0;
+  end
+  else
+  begin
+
+    if(p0_request == 1'b1)
+    begin
+      state <= S_P0;
+    end
+    else
+    if(p1_request == 1'b1)
+    begin
+      state <= S_P1;
+    end
+
+  end
+
+end
+
 endmodule

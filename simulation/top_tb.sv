@@ -36,6 +36,12 @@ logic cpu_enable;
 logic [15:0] mem_map_init_addresses;
 logic [15:0] mem_map_init_values;
 
+logic[4:0] vga_out_r;
+logic[5:0] vga_out_g;
+logic[4:0] vga_out_b;
+logic vga_out_hs;
+logic vga_out_vs;
+
 top TOP
 	(
 	.clk(clk),
@@ -58,6 +64,12 @@ top TOP
 
 	.uart_rx(uart_rx),
 	.uart_tx(uart_tx),
+
+	.vga_out_r(vga_out_r),
+    .vga_out_g(vga_out_g),
+	.vga_out_b(vga_out_b),
+	.vga_out_hs(vga_out_hs),
+	.vga_out_vs(vga_out_vs),
 
 	.cpu_enable(cpu_enable),
 

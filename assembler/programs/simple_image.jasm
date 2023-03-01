@@ -1,0 +1,47 @@
+LLI $0, 0x00
+LUI $0, 0xB5
+LLI $1, 0xFF
+LUI $1, 0xFF
+LLI $2, 0x7F
+LUI $2, 0xDA
+LLI $3, 0
+LUI $3, 0
+LLI $4, 0
+LUI $4, 0
+LLI $5, 25
+LUI $5, 0
+LLI $6, 50
+LUI $6, 0
+
+STI $0, $3
+CPP $0, $1
+BEQ 3
+ADDI $0, 1
+J 8
+LLI $0, 0x00
+LUI $0, 0xB5
+ADDI $4, 1
+CPP $4, $6
+BNE 3
+LLI $4, 0
+LUI $4, 0
+CPP $4, $5
+BGT 9
+
+CPP $0, $2
+BGT 4
+LLI $3, 0
+LUI $3, 0
+J -18
+LLI $3, 0xFF
+LUI $3, 0xFF
+J -21
+
+CPP $0, $2
+BGT 4
+LLI $3, 0xFF
+LUI $3, 0xFF
+J -26
+LLI $3, 0
+LUI $3, 0
+J -29

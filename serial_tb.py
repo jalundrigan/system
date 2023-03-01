@@ -139,7 +139,7 @@ def send_program():
 
     #print('Enter file name')
     #file_name = input()
-    file_name = './assembler/programs/tester.out'
+    file_name = './assembler/programs/simple_image.out'
     write_vals = []
 
     print('Preparing to open file')
@@ -163,6 +163,10 @@ def send_program():
 
             mem_address += 1
             byte_index += 2
+        
+        #for i in range(max(46336, mem_address), 65536):
+        #    print(i)
+        #    check_write_ack(write_memory(i, 43690))
 
     print('Beginning memory read')
 
