@@ -12,3 +12,6 @@ simulation/vsim.wlf
 top/cpu/core.sv.bak
 assembler/programs/tester.out
 assembler/programs/simple_image.out
+assembler/programs/fancy.dis
+assembler/programs/fancy.jasm
+assembler/programs/fancy.out
